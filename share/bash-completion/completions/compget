@@ -1,0 +1,49 @@
+_compget_opts=(-d -f --debug --log -x -h --help)
+_compget(){
+    local cur prev words cword
+    _init_completion || return
+
+    for w in "${words[@]}" ; do
+        if [[ $w == "--" ]] ; then
+            return
+        fi
+    done
+
+    if [[ $cur == -* ]] ; then
+        COMPREPLY=($(compgen -W "${_compget_opts[*]}" -- "${cur}"))
+    else
+        if _compget_completing_dash_f_arg ; then
+            echo "complgeting -f"
+            _filedir
+        else
+            case "${prev}" in
+                -d) _filedir -d ;;
+                --log) _filedir ;;
+                *) return ;;
+            esac
+        fi
+    fi
+}
+
+#
+# With argparse and nargs="*", every argument after -f that does not begin with
+# a '-' is an argument to '-f' so if we go backwards and the first argument we
+# encounter that begins with a '-' is '-f', then the current argument we are
+# completing *is* an argument to -f, otherwise it is not.  This includes the
+# current argument since if it starts with a '-', it cannot be an argument to
+# -f.
+_compget_completing_dash_f_arg(){
+    local i
+    local IFS='|'
+    for ((i=$cword ; i > 0; i--)) ; do
+        # printf "word: %s\n" "${words[i]}"
+        case ${words[i]} in
+            -f) return 0 ;;
+            -*) return 1 ;;
+            *) continue ;;
+        esac
+    done
+    return 1
+}
+
+complete -F _compget compget
