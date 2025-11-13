@@ -1,0 +1,21 @@
+# Just copy-paste this from the doc
+[build-system]
+    requires = ["setuptools"]
+    build-backend = "setuptools.build_meta"
+
+# Tell setuptools what to install and where to find it
+[tool.setuptools]
+    packages = ["comptest"] # Pakcage names
+    package-dir = {"" = "src/python"} # Where to find packages.  The pacakge "".comptest is in "src/python"
+
+# Just copy-paste this from the doc
+[project]
+    name = "comptest"
+    version = "0.0.1"
+    dependencies = ["pexpect"]
+
+# Automatically create an executable that runs comptest.main()
+[project.scripts]
+    compget = "comptest:main"
+
+
