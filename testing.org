@@ -1,0 +1,121 @@
+
+Although this is less sophisticated than what =bash-completion= does, it's
+similar.
+
+It works by creating a BASH process that is controlled by a pseudoterminal using
+the =pexpect= python package.
+
+The first thing we should do is create a startup file for this shell.  This is
+not strictly necessary but it's the simplest way to setup our shell.  This file
+should source the file that defines the completion we are testing and possibly
+source the =bash_completion= script if our file uses stuff from that.
+
+Next we have three functions that we can use.  All of them add a 'TAB' after
+=cmd= to trigger completion.
+
+* =CompletionRunner.get_completion_candidates(cmd, timeout=0)=
+
+Returns the list of completion candidates.  If we don't know in advance whether
+the command will produce 0, one, or many candidates, we should use a timeout.
+
+* =CompletionRunner.expect_single_candidate(cmd, expected_completion, timeout=1)=
+
+Returns True if the completion produced a single candidate and it matches the
+expected completion.
+
+Note that for this function, the expected completion should be what we expect
+BASH to add to what is already there.  For example, starting with
+
+#+begin_src shell
+<PS1> git check[]
+#+end_src
+
+pressing TAB will give us
+
+#+begin_src shell
+<PS1> git checkout []
+#+end_src
+
+so the expected completion would be ~"out "~.  So the test should be
+
+#+begin_src python
+comp_runner = CompletionRunner(init_files=['/opt/homebrew/share/bash-completion/bash_completion'])
+result = comp_runner.expect_single_candidate('git check', 'out ')
+if result:
+    print("TEST PASSED")
+else:
+    print("TEST FAILED")
+#+end_src
+
+* =CompletionRunner.expect_multiple_candidates(cmd, expected_completions, timeout=0)=
+
+Gets completions for a command that is expected to produce multiple results and
+returns true if the results and =expected_completions= are equal as Python sets.
+
+* How stuff works
+** Getting multiple candidates
+
+When we have multiple candidates, starting with
+
+#+begin_src shell
+<PS1> git ch[]
+#+end_src
+
+and pressing TAB gives us
+
+#+begin_src shell
+<PS1> git ch
+checkout
+cherry
+cherry-pick
+<PS1> git che[]
+#+end_src
+
+We send =git ch=, then expect it plus a =\r\n=, so now the buffer starts on the
+=c= of =checkout= on the second line.  Next we expect =<PS1>= which finds the
+=<PS1>= on the last line.  With this, =bash.before= is now
+#+begin_src shell
+checkout
+cherry
+cherry-pick
+#+end_src
+which is our list of candidates.  Because this mode causes a PS1 to be printed,
+we can use an expect to get what is between the first =git che= and the =PS1=
+that gets printed later.
+
+When completions produce only one candidate, this end marker (the second PS1)
+does not get printed to tell us we're done.
+
+** Getting single candidates
+
+When we expect a single candidate,
+#+begin_src shell
+<PS1> git check[]
+#+end_src
+becomes
+#+begin_src shell
+<PS1> git checkout []
+#+end_src
+
+There is no second =PS1= that we can =expect=.  What we do is we still expect it
+but with a timeout of one second and when the timeout expires, we take
+everything between =git check= and the end of output, which is =out =.
+
+*** What =bash-completion= does
+
+Bash completion does something more sophisticated: it sends cmd, expects cmd so
+now the start of the buffer, same as what we do.
+
+But then it presses TAB, which makes BASH add a completion, then it sends a
+crazy string of characters called =MAGIC_MARK=, then it expects =MAGIC_MARK=.
+
+#+begin_src shell
+$ git checkout __MAGIC_MARK__
+           ^  ^
+       start  end
+#+end_src
+
+so now =bash.before= is what is between =cmd= and =MAGIC_MARK= which is what we
+were after.  The timeout works well enough but I'm documenting this here so I
+don't lose the understanding gained when analyzing =bash-completion='s use of
+=pexpect=.
