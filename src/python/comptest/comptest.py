@@ -50,29 +50,33 @@ def get_args():
     p.add_argument("-d", metavar='DIRECTORY', help="Working directory to be in")
     p.add_argument("cmd", metavar='CMD', help="Command to complete")
     p.add_argument("--debug", action='store_true')
-    p.add_argument("--load-bash-completion", action='store_true', help="Load BASH completion from likely directories")
+    p.add_argument("--load-bash-completion", "-l", action='store_true', help="Load BASH completion from likely directories")
     p.add_argument("--log-file", help="Log file")
     p.add_argument("--xtrace-log", help="Log file for xtrace output", default=os.path.expanduser("~/.log.txt"))
     p.add_argument("-x", action="store_true", help="Activate xtrace (set -x)")
     p.add_argument("--verbose-ps4", action='store_true', help="Set verbose PS4.  Only useful if -x option is used")
     return p.parse_args()
 
+def find_bash_completion():
+    candidates = [
+        '/opt/homebrew/share/bash-completion/bash_completion',
+        '/usr/local/share/bash-completion/bash_completion',
+        '/usr/share/bash-completion/bash_completion'
+    ]
+    for f in candidates:
+        if os.path.exists(f):
+            return f
+
 def main():
     args = get_args()
     init_files=[]
     init_commands=[]
     if args.load_bash_completion:
-        candidates = [
-            '/opt/homebrew/share/bash-completion/bash_completion',
-            '/usr/local/share/bash-completion/bash_completion',
-            '/usr/share/bash-completion/bash_completion'
-        ]
-        for f in candidates:
-            if os.path.exists(f):
-                args.init_files.append(f)
-                break
+        bash_comp = find_bash_completion()
+        if bash_comp:
+            init_files.append(bash_comp)
         else:
-            print(f"ERROR: Loading bash completion requested but none of {candidates} exist")
+            print(f"ERROR: Loading bash completion requested but it was not found")
             return 1
 
     logging.basicConfig(
