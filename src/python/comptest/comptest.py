@@ -66,15 +66,15 @@ def find_bash_completion():
     for f in candidates:
         if os.path.exists(f):
             return f
+    logging.error("Could none of the bash completion file candidates exist")
 
 def main():
     args = get_args()
-    init_files=[]
     init_commands=[]
     if args.load_bash_completion:
         bash_comp = find_bash_completion()
         if bash_comp:
-            init_files.append(bash_comp)
+            args.init_files = [bash_comp, *args.init_files]
         else:
             print(f"ERROR: Loading bash completion requested but it was not found")
             return 1
