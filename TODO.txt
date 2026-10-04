@@ -1,0 +1,61 @@
+
+- Test completion generation from argparse object separately and
+  remove the --color argument from compget.
+
+- Rename get_comp_magic()
+
+- Create convenient functions so that the tests for git-colon-paths can
+  be simplified.
+  - Rename class to CompletionTester
+  - Add two test methods in notes
+  - Redo salad completion with said methods
+
+- Cleanup example
+
+- Write a README.md
+
+
+#### NOTES
+
+  About testing
+
+  - One line per test
+  - All tests get run
+  - Exit code is non-zero if one test failed
+  - Each test prints one line with success or failure
+  - Same function whether we expect one or many candidates
+
+  For this we need a global variable say 'at_least_one_test_failed' and
+  each test that fails sets it to True
+
+class Testing()
+	def __init__(self):
+		self.completion_runner = comptest.CompletionRunner(...)
+		self.a_test_failed = False
+		self.failed_tests
+
+	def test_many(self, cmd, expected, timeout=None):
+		result = self.completion_runner.get_comp_magic(cmd, timeout=timeout)
+
+		if not isinistance(result, list):
+			self.a_test_failed = True
+			print(f"Test failed: expected multiple results, got one: {result}")
+			return
+
+		if set(result) != set(expected):
+			self.a_test_failed = True
+			print(f"Test failed: cmd='{cmd}', expected... got ...")
+
+		print("Test passed: cmd='cmd' got results")
+
+	def test_one(self, cmd, expected
+		Same thing
+
+	tester = Tester()
+
+	This is what I want but I don't want to have to write this every time.
+
+	Maybe instead I can make this class comptest.Tester and give it all the
+	constructor arguments of CompletionRunner.
+
+	Or I can just rename it to CompletionTester, add these two methods. YES!
