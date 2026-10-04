@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import re
 import sys
 import os
 import pexpect
@@ -43,7 +44,8 @@ import time
 #   so if we expect '/@ <CMD-TO-TEST>', then we expect <MAGIC_MARK> then
 #   bash.before will be exactly <REST-OF-SINGLE-COMPLETION>.
 
-def get_args():
+def get_parser():
+    # for x in p._actions: print(y.extend(x.option_strings))
     p = argparse.ArgumentParser()
     p.add_argument("--init-files", "-f", metavar='FILE', nargs='*', default=[], help="Files to source before attempting completion")
     p.add_argument("--bash-command", help="Bash command (default 'bash --norc')")
@@ -55,7 +57,53 @@ def get_args():
     p.add_argument("--xtrace-log", help="Log file for xtrace output", default=os.path.expanduser("~/.log.txt"))
     p.add_argument("-x", action="store_true", help="Activate xtrace (set -x)")
     p.add_argument("--verbose-ps4", action='store_true', help="Set verbose PS4.  Only useful if -x option is used")
-    return p.parse_args()
+    p.add_argument("--interact", action='store_true')
+    p.add_argument("--color", choices=['red', 'green', 'blue'])
+    p.add_argument("--generate-completion", action='store_true', help="Generate completion for this script")
+    return p
+
+def form_autocomplete(parser, namespace):
+    parser = get_parser()
+    flag_options = []
+    arg_options = []
+    arg_actions = []
+    posarg_actions = []
+    for a in parser._actions:
+        if isinstance(a, argparse._StoreTrueAction):
+            flag_options.append(a.option_strings)
+        elif isinstance(a, argparse._StoreAction):
+            if not a.option_strings:
+                posarg_actions.append(a)
+            else:
+                arg_options.append(a.option_strings)
+                arg_actions.append(a)
+
+    print(f"""
+_{namespace}_arg_options=({' '.join((' '.join(o) for o in arg_options))})
+_{namespace}_flag_options=({' '.join((' '.join(o) for o in flag_options))})
+_{namespace}(){{
+    local cur prev words cword
+    _init_completion || return
+    case $prev in
+""")
+    for opt in arg_actions:
+        case = '|'.join(opt.option_strings)
+        if opt.choices:
+            print(f"        {case}) COMPREPLY=($(compgen -W '{' '.join(opt.choices)}' -- \"${{cur}}\")) ; return ;;")
+        else:
+            print(f"        {case}) _{namespace}_{opt.dest}_values ;;")
+    print(f"        *) COMPREPLY=($(compgen -W '${{_{namespace}_arg_options[*]}} ${{_{namespace}_flag_options[*]}}' -- \"${{cur}}\"))")
+    print("    esac")
+    print("}")
+    for opt in arg_actions:
+        if opt.choices:
+            continue
+        print(f"_{namespace}_{opt.dest}_values(){{\n    : TODO\n}}\n")
+    print(f"complete -F _{namespace} {namespace}")
+
+
+def get_args():
+    return get_parser().parse_args()
 
 def find_bash_completion():
     candidates = [
@@ -70,7 +118,10 @@ def find_bash_completion():
 
 def main():
     args = get_args()
-    init_commands=[]
+    if args.generate_completion:
+        form_autocomplete(get_parser(), "compget")
+        return
+    init_commands = []
     if args.load_bash_completion:
         bash_comp = find_bash_completion()
         if bash_comp:
@@ -86,28 +137,48 @@ def main():
     )
 
     comp = CompletionRunner(
-            bash_command=args.bash_command,
-            PS4=('+ ' if not args.verbose_ps4 else
-                 '+ \033[35m${BASH_SOURCE[0]:-}\033[36m:\033[1;37m${FUNCNAME:-}\033[22;36m:\033[32m${LINENO:-x}\033[36m:\033[0m '),
-            init_files=args.init_files,
-            init_commands=init_commands,
-            directory=args.d,
-            logfile=args.log_file,
-            xtrace=args.x,
-            xtrace_log=args.xtrace_log
+        bash_command=args.bash_command,
+        PS4=('+ ' if not args.verbose_ps4 else
+             '+ \033[35m${BASH_SOURCE[0]:-}\033[36m:\033[1;37m${FUNCNAME:-}\033[22;36m:\033[32m${LINENO:-x}\033[36m:\033[0m '),
+        init_files=args.init_files,
+        init_commands=init_commands,
+        directory=args.d,
+        logfile=args.log_file,
+        xtrace=args.x,
+        xtrace_log=args.xtrace_log
     )
 
-    results = comp.get_completion_candidates(args.cmd, timeout=1)
+    results = comp.get_comp_magic(args.cmd, timeout=1)
+
+    if args.interact:
+        comp.bash.sendintr()
+        set_ps1="PS1='[comptest shell] $ '"
+        comp.bash.send(f"{set_ps1}\n")
+        comp.bash.expect_exact(set_ps1)
+        comp.bash.interact()
 
     comp.close()
-    print('\n'.join(sorted(results)))
+
+    if isinstance(results, list):
+        print('\n'.join(sorted(results)))
+    elif isinstance(results, str):
+        print(results)
+    else:
+        print("No Results", file=sys.stderr)
 
 class CompletionRunner:
-    def __init__(self, PS1="@/", PS4='+ ', xtrace=False, xtrace_log=None, directory=None, init_files=None, init_commands=None, logfile=None, bash_command=None):
+    """
+    Test completions for a command.
+    """
+    def __init__(self, PS1="@/", PS4='+ ', xtrace=False, xtrace_log=None, directory=None, init_files=None, init_commands=None, logfile=None, bash_command=None, magic_mark="YAYBOOYAYBOO"):
         self.PS1 = PS1
         self.PS4 = PS4
+        self.magic_mark = magic_mark
         self.bash_command = bash_command if bash_command else "bash --norc"
         env = os.environ.copy()
+        # Don't read the user's ~/.inputrc, it could have things that will
+        # mess with our parsing such as show-mode-in-prompt
+        env['INPUTRC'] = "/dev/null"
         env['TERM']='dumb'
         env['PS1'] = self.PS1
         env['PS4'] = self.PS4
@@ -121,15 +192,9 @@ class CompletionRunner:
             logfile=open(logfile,'a') if logfile else None
         )
 
-        # If we're being loaded with a different command, then loading the
-        # profile may change PS1 or set a PROMPT_COMMAND and everything we
-        # do is based on knowing what PS1 is so we can use it as a delimiter.
-        if bash_command is not None:
-            self.bash.sendline(f"unset PROMPT_COMMAND")
-            self.bash.sendline(f"PS1={self.PS1}")
-            self.bash.expect_exact(f"PS1={self.PS1}\r\n{self.PS1}")
-
         if xtrace:
+            if init_commands is None:
+                init_commands = []
             if xtrace_log is None:
                 xtrace_log = "xtrace_log.txt"
             init_commands.append(f"exec {{BASH_XTRACEFD}}>>{xtrace_log}")
@@ -148,6 +213,15 @@ class CompletionRunner:
                 res, ok = self.run_command(c, check=True)
                 if not ok:
                     raise RuntimeError(f"sourcing '{f}' failed")
+
+        # If we're being loaded with a different command, then loading the
+        # profile may change PS1 or set a PROMPT_COMMAND and everything we
+        # do is based on knowing what PS1 is so we can use it as a delimiter.
+        if bash_command is not None:
+            self.bash.sendline(f"unset PROMPT_COMMAND")
+            self.bash.sendline(f"PS1={self.PS1}")
+            self.bash.expect_exact(f"PS1={self.PS1}\r\n{self.PS1}")
+
 
         self._setup_readline()
 
@@ -189,53 +263,40 @@ class CompletionRunner:
             exit_code=int(self.bash.before.strip())
             return result, (exit_code == 0)
 
-    def expect_single_candidate(self, cmd, expected_completion, timeout=None):
-        logging.debug(f"sending '{cmd}\\t'")
+    def get_comp_magic(self, cmd, timeout=None):
+        """ Now that I understand what bash-completion is doing with Magic Mark
+        I'm gonna try it here """
         self.bash.send(cmd + '\t')
-        self.bash.expect_exact(cmd)
-        completion = None
-        try:
-            self.bash.expect_exact(expected_completion, timeout=timeout)
-            completion = self.bash.after
-        except pexpect.exceptions.TIMEOUT as t:
-            logging.debug(f"Timeout reached")
-            self.bash.sendintr()
-            self.bash.expect_exact(self.PS1)
-            return False
-        logging.debug(f"before = '{self.bash.before}'")
-        if '\n' in self.bash.before:
-            logging.warning(f"newline in buffer between command and expected completion indicates more than one candidate either this indicates a failed test or that the test itself should be done with expect_multiple_candidates()")
-            self.bash.sendintr()
-            self.bash.expect_exact(self.PS1)
-            return False
+        self.bash.expect_exact(cmd) # expect 'rendered_cmd' in bash-completion
+        self.bash.send(self.magic_mark)
+        # Call from bash-completion in function assert_complete in
+        # bash-completion:test/t/conftest.py.
+        match_no = self.bash.expect(
+            [
+                # 0: multiple lines, result in .before
+                r"\r\n" + re.escape(self.PS1 + cmd) + ".*" + self.magic_mark,
+                # 1: no completion
+                r"^" + self.magic_mark,
+                # 2: on same line, result in .match
+                r"^([^\r]+)%s$" % self.magic_mark,
+                # 3: error messages
+                r"^([^\r].*)%s$" % self.magic_mark,
+                pexpect.EOF,
+                pexpect.TIMEOUT,
+            ]
+        )
+        if match_no == 0:
+            results = self.bash.before.strip().splitlines()
+        elif match_no == 2:
+            results = self.bash.match.group(1)
+        else:
+            results = None
+
         self.bash.sendintr()
         self.bash.expect_exact(self.PS1)
-        logging.debug(f"expected_completion='{expected_completion}'")
-        logging.debug(f"completion='{completion}'")
-        return expected_completion == completion
 
-    def expect_multiple_candidates(self, cmd, expected_completions, timeout=None):
-        result = self.get_completion_candidates(cmd, timeout)
-        logging.debug(f"expected - result = {set(expected_completions) - result}")
-        return (result == set(expected_completions))
-
-    def get_completion_candidates(self, cmd, timeout=1):
-        # NOTE: bash-completion does something with 'MAGIC_MARK' which seems
-        # to be some token that is super unlikely to arise in the ouput of
-        # a command.
-        logging.debug(f"Getting candidates for command {cmd}")
-        logging.debug(f"sending '{cmd}\\t'")
-        self.bash.send(cmd + "\t")
-        logging.debug(f"expect exact: '{cmd}'")
-        self.bash.expect_exact(cmd)
-        try:
-            self.bash.expect_exact(self.PS1, timeout=timeout)
-        except pexpect.exceptions.TIMEOUT as t:
-            logging.debug(f"Timeout reached")
-        result = set(self.bash.before.strip().splitlines())
-        self.bash.sendintr()
-        self.bash.expect_exact(self.PS1)
-        return result
+        return results
 
 if __name__ == "__main__":
     main()
+
