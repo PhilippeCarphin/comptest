@@ -62,49 +62,6 @@ def get_parser():
     p.add_argument("--generate-completion", action='store_true', help="Generate completion for this script")
     return p
 
-def form_autocomplete(parser, namespace):
-    parser = get_parser()
-    flag_options = []
-    arg_options = []
-    arg_actions = []
-    posarg_actions = []
-    for a in parser._actions:
-        if isinstance(a, argparse._StoreTrueAction):
-            flag_options.append(a.option_strings)
-        elif isinstance(a, argparse._StoreAction):
-            if not a.option_strings:
-                posarg_actions.append(a)
-            else:
-                arg_options.append(a.option_strings)
-                arg_actions.append(a)
-
-    print(f"""
-_{namespace}_arg_options=({' '.join((' '.join(o) for o in arg_options))})
-_{namespace}_flag_options=({' '.join((' '.join(o) for o in flag_options))})
-_{namespace}(){{
-    local cur prev words cword
-    _init_completion || return
-    case $prev in
-""")
-    for opt in arg_actions:
-        case = '|'.join(opt.option_strings)
-        if opt.choices:
-            print(f"        {case}) COMPREPLY=($(compgen -W '{' '.join(opt.choices)}' -- \"${{cur}}\")) ; return ;;")
-        else:
-            print(f"        {case}) _{namespace}_{opt.dest}_values ;;")
-    print(f"        *) COMPREPLY=($(compgen -W '${{_{namespace}_arg_options[*]}} ${{_{namespace}_flag_options[*]}}' -- \"${{cur}}\"))")
-    print("    esac")
-    print("}")
-    for opt in arg_actions:
-        if opt.choices:
-            continue
-        print(f"_{namespace}_{opt.dest}_values(){{\n    : TODO\n}}\n")
-    print(f"complete -F _{namespace} {namespace}")
-
-
-def get_args():
-    return get_parser().parse_args()
-
 def find_bash_completion():
     candidates = [
         '/opt/homebrew/share/bash-completion/bash_completion',
