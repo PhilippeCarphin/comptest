@@ -9,6 +9,9 @@ else
 endif
 
 man: share/man/man1/comptest.1
+.PHONY: test
+test:
+	env -C test/compgen/from_parser python3 test-compgen-example.py
 
 share/man/man1/%.1:share/man/man1/%.org
 	pandoc -s -t man -f org $< -o $@
