@@ -62,12 +62,13 @@ def get_parser():
     p.add_argument("--generate-completion", action='store_true', help="Generate completion for this script")
     return p
 
-def form_autocomplete(parser, namespace):
-    parser = get_parser()
+def form_autocomplete(parser, namespace, commands=None):
     flag_options = []
     arg_options = []
     arg_actions = []
     posarg_actions = []
+
+    # Split actions into groups to hadle them in different ways
     for a in parser._actions:
         if isinstance(a, argparse._StoreTrueAction):
             flag_options.append(a.option_strings)
@@ -84,22 +85,39 @@ _{namespace}_flag_options=({' '.join((' '.join(o) for o in flag_options))})
 _{namespace}(){{
     local cur prev words cword
     _init_completion || return
-    case $prev in
-""")
+
+    # Handle options that take arguments (_{namespace}_arg_options)
+    case $prev in""")
     for opt in arg_actions:
         case = '|'.join(opt.option_strings)
+        print(f"        {case}) _{namespace}_{opt.dest}_values ;;")
+
+    #
+    # If prev is *not* an option requiring an argument, then
+    # suggest options and posargs
+    #
+    print(f"        *) COMPREPLY=($(compgen -W '${{_{namespace}_arg_options[*]}} ${{_{namespace}_flag_options[*]}}' -- \"${{cur}}\"))")
+    print(f"           _{namespace}_posargs")
+    print(f"           ;;")
+    print("    esac")
+    print("}")
+
+    print(f"_{namespace}_posargs(){{")
+    print(f"    _filedir # TODO replace if posargs aren't files")
+    print("}")
+
+    # Create stub functions for providing values to argument options
+    # or if the option has a choices attribute, 
+    for opt in arg_actions:
+        print(f"_{namespace}_{opt.dest}_values(){{")
         if opt.choices:
             print(f"        {case}) COMPREPLY=($(compgen -W '{' '.join(opt.choices)}' -- \"${{cur}}\")) ; return ;;")
         else:
-            print(f"        {case}) _{namespace}_{opt.dest}_values ;;")
-    print(f"        *) COMPREPLY=($(compgen -W '${{_{namespace}_arg_options[*]}} ${{_{namespace}_flag_options[*]}}' -- \"${{cur}}\"))")
-    print("    esac")
-    print("}")
-    for opt in arg_actions:
-        if opt.choices:
-            continue
-        print(f"_{namespace}_{opt.dest}_values(){{\n    : TODO\n}}\n")
-    print(f"complete -F _{namespace} {namespace}")
+            print("    : TODO")
+        print("}\n")
+
+    if commands:
+        print(f"complete -F _{namespace} {' '.join(commands)}")
 
 
 def get_args():

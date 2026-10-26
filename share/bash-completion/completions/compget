@@ -1,49 +1,38 @@
-_compget_opts=(-d -f --debug --log -x -h --help)
+
+_compget_arg_options=(--init-files -f --bash-command -d --log-file --xtrace-log --color)
+_compget_flag_options=(--debug --load-bash-completion -l -x --verbose-ps4 --interact --generate-completion)
 _compget(){
     local cur prev words cword
     _init_completion || return
+    case $prev in
 
-    for w in "${words[@]}" ; do
-        if [[ $w == "--" ]] ; then
-            return
-        fi
-    done
-
-    if [[ $cur == -* ]] ; then
-        COMPREPLY=($(compgen -W "${_compget_opts[*]}" -- "${cur}"))
-    else
-        if _compget_completing_dash_f_arg ; then
-            echo "complgeting -f"
-            _filedir
-        else
-            case "${prev}" in
-                -d) _filedir -d ;;
-                --log) _filedir ;;
-                *) return ;;
-            esac
-        fi
-    fi
+        --init-files|-f) _compget_init_files_values ;;
+        --bash-command) _compget_bash_command_values ;;
+        -d) _compget_d_values ;;
+        --log-file) _compget_log_file_values ;;
+        --xtrace-log) _compget_xtrace_log_values ;;
+        --color) COMPREPLY=($(compgen -W 'red green blue' -- "${cur}")) ; return ;;
+        *) COMPREPLY=($(compgen -W '${_compget_arg_options[*]} ${_compget_flag_options[*]}' -- "${cur}"))
+    esac
+}
+_compget_init_files_values(){
+    : TODO
 }
 
-#
-# With argparse and nargs="*", every argument after -f that does not begin with
-# a '-' is an argument to '-f' so if we go backwards and the first argument we
-# encounter that begins with a '-' is '-f', then the current argument we are
-# completing *is* an argument to -f, otherwise it is not.  This includes the
-# current argument since if it starts with a '-', it cannot be an argument to
-# -f.
-_compget_completing_dash_f_arg(){
-    local i
-    local IFS='|'
-    for ((i=$cword ; i > 0; i--)) ; do
-        # printf "word: %s\n" "${words[i]}"
-        case ${words[i]} in
-            -f) return 0 ;;
-            -*) return 1 ;;
-            *) continue ;;
-        esac
-    done
-    return 1
+_compget_bash_command_values(){
+    : TODO
+}
+
+_compget_d_values(){
+    : TODO
+}
+
+_compget_log_file_values(){
+    : TODO
+}
+
+_compget_xtrace_log_values(){
+    : TODO
 }
 
 complete -F _compget compget
