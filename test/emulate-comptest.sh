@@ -1,3 +1,6 @@
+# Setup similar conditions to the BASH instance running in the
+# comptest.CompletionRunner.
+#
 unset PROMPT_COMMAND
 
 bind "set page-completions off"
@@ -11,5 +14,9 @@ bind "set show-all-if-ambiguous"
 bind "set bell-style none"
 bind "set colored-completion-prefix off"
 bind "set colored-stats off"
+
+# Important to not get bytes from readline printing mode info
+bind "set show-mode-in-prompt off"
+
 PS1="@/"
 
