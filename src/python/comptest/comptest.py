@@ -5,7 +5,6 @@ import sys
 import os
 import pexpect
 import logging
-import argparse
 import time
 
 # NOTE: I learned how pexpect works and how to use it from a mix of experimentation
@@ -44,24 +43,6 @@ import time
 #   so if we expect '/@ <CMD-TO-TEST>', then we expect <MAGIC_MARK> then
 #   bash.before will be exactly <REST-OF-SINGLE-COMPLETION>.
 
-def get_parser():
-    # for x in p._actions: print(y.extend(x.option_strings))
-    p = argparse.ArgumentParser()
-    p.add_argument("--init-files", "-f", metavar='FILE', nargs='*', default=[], help="Files to source before attempting completion")
-    p.add_argument("--bash-command", help="Bash command (default 'bash --norc')")
-    p.add_argument("-d", metavar='DIRECTORY', help="Working directory to be in")
-    p.add_argument("cmd", metavar='CMD', help="Command to complete")
-    p.add_argument("--debug", action='store_true')
-    p.add_argument("--load-bash-completion", "-l", action='store_true', help="Load BASH completion from likely directories")
-    p.add_argument("--log-file", help="Log file")
-    p.add_argument("--xtrace-log", help="Log file for xtrace output", default=os.path.expanduser("~/.log.txt"))
-    p.add_argument("-x", action="store_true", help="Activate xtrace (set -x)")
-    p.add_argument("--verbose-ps4", action='store_true', help="Set verbose PS4.  Only useful if -x option is used")
-    p.add_argument("--interact", action='store_true')
-    p.add_argument("--color", choices=['red', 'green', 'blue'])
-    p.add_argument("--generate-completion", action='store_true', help="Generate completion for this script")
-    return p
-
 def find_bash_completion():
     candidates = [
         '/opt/homebrew/share/bash-completion/bash_completion',
@@ -72,56 +53,6 @@ def find_bash_completion():
         if os.path.exists(f):
             return f
     logging.error("Could none of the bash completion file candidates exist")
-
-def main():
-    args = get_args()
-    if args.generate_completion:
-        form_autocomplete(get_parser(), "compget")
-        return
-    init_commands = []
-    if args.load_bash_completion:
-        bash_comp = find_bash_completion()
-        if bash_comp:
-            args.init_files = [bash_comp, *args.init_files]
-        else:
-            print(f"ERROR: Loading bash completion requested but it was not found")
-            return 1
-
-    logging.basicConfig(
-        format="[{levelname} - {funcName}] {message}",
-        style='{',
-        level=(logging.DEBUG if args.debug else logging.INFO)
-    )
-
-    comp = CompletionRunner(
-        bash_command=args.bash_command,
-        PS4=('+ ' if not args.verbose_ps4 else
-             '+ \033[35m${BASH_SOURCE[0]:-}\033[36m:\033[1;37m${FUNCNAME:-}\033[22;36m:\033[32m${LINENO:-x}\033[36m:\033[0m '),
-        init_files=args.init_files,
-        init_commands=init_commands,
-        directory=args.d,
-        logfile=args.log_file,
-        xtrace=args.x,
-        xtrace_log=args.xtrace_log
-    )
-
-    results = comp.get_comp_magic(args.cmd, timeout=1)
-
-    if args.interact:
-        comp.bash.sendintr()
-        set_ps1="PS1='[comptest shell] $ '"
-        comp.bash.send(f"{set_ps1}\n")
-        comp.bash.expect_exact(set_ps1)
-        comp.bash.interact()
-
-    comp.close()
-
-    if isinstance(results, list):
-        print('\n'.join(sorted(results)))
-    elif isinstance(results, str):
-        print(results)
-    else:
-        print("No Results", file=sys.stderr)
 
 class CompletionRunner:
     """
@@ -220,7 +151,7 @@ class CompletionRunner:
             exit_code=int(self.bash.before.strip())
             return result, (exit_code == 0)
 
-    def get_comp_magic(self, cmd, timeout=None):
+    def get_comp(self, cmd, timeout=None):
         """ Now that I understand what bash-completion is doing with Magic Mark
         I'm gonna try it here """
         self.bash.send(cmd + '\t')

@@ -5,8 +5,9 @@
 
 # Tell setuptools what to install and where to find it
 [tool.setuptools]
-    packages = ["comptest"] # Package names
-    package-dir = {"" = "src/python"} # Where to find packages.  The package "".comptest is in "src/python"
+    #packages = ["comptest", "compgen"] # Package names
+    packages = ["comptest", "compgen"] # Package names
+    package-dir = {"comptest" = "src/python/comptest", "compgen" = "src/python/compgen"} # Where to find packages.  The package "".comptest is in "src/python"
 
 # Just copy-paste this from the doc
 [project]
@@ -16,6 +17,6 @@
 
 # Automatically create an executable that runs comptest.main()
 [project.scripts]
-    compget = "comptest:main"
+    compget = "comptest.compget:main"
 
 

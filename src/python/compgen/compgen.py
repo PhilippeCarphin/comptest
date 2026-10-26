@@ -2,6 +2,11 @@ import argparse
 import textwrap
 import sys
 
+def completion_from_parser(parser: argparse.ArgumentParser, namespace: str, commands: list[str]):
+    if isinstance(commands, str):
+        raise TypeError("Argument commands must be a sequence, not 'str'")
+    CompletionGenerator(parser=parser, namespace=namespace, commands=commands).generate()
+
 class CompletionGenerator():
     def __init__(self, parser, namespace, commands):
         self.parser = parser
@@ -70,7 +75,3 @@ class CompletionGenerator():
         print(f"        $(compgen -W \"${{_{self.namespace}_flag_options[*]}}\" -- \"${{cur}}\")")
         print(f"    )")
         print("}")
-
-def get_args():
-    return get_parser().parse_args()
-
