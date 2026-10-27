@@ -2,13 +2,13 @@ import argparse
 import textwrap
 import sys
 
-def completion_from_parser(parser: argparse.ArgumentParser, namespace: str, commands: list[str]):
+def completion_from_parser(parser: argparse.ArgumentParser, namespace: str, commands: list[str], with_descriptions=False):
     if isinstance(commands, str):
         raise TypeError("Argument commands must be a sequence, not 'str'")
-    CompletionGenerator(parser=parser, namespace=namespace, commands=commands).generate()
+    CompletionGenerator(parser=parser, namespace=namespace, commands=commands, with_descriptions=with_descriptions).generate()
 
 class CompletionGenerator():
-    def __init__(self, parser, namespace, commands):
+    def __init__(self, parser, namespace, commands, with_descriptions=False, advanced=False):
         self.parser = parser
         self.namespace = namespace
         self.arg_actions = []
@@ -16,6 +16,7 @@ class CompletionGenerator():
         self.posarg_actions = []
         self.get_action()
         self.commands = commands
+        self.with_descriptions = with_descriptions
 
     def get_action(self):
         for a in self.parser._actions:
@@ -33,6 +34,8 @@ class CompletionGenerator():
     def generate(self):
         self.print_arrays()
         self.print_main_function()
+        if self.with_descriptions:
+            self.print_description_adder()
         self.print_generic_options()
         self.print_value_function_stubs()
         print(f"complete -F _{self.namespace} {' '.join(self.commands)}")
@@ -42,6 +45,8 @@ class CompletionGenerator():
             _{self.namespace}_arg_options=({' '.join((' '.join(o.option_strings) for o in self.arg_actions))})
             _{self.namespace}_flag_options=({' '.join((' '.join(o.option_strings) for o in self.flag_actions))})
         """))
+        if self.with_descriptions:
+            self.print_description_array()
 
     def print_main_function(self):
         print(textwrap.dedent(f"""
@@ -50,13 +55,22 @@ class CompletionGenerator():
             _init_completion || return
         """))
 
-        print("    case $prev in")
+        if self.advanced:
+            print(f"    local opt=$(_{self.namespace}_get_completed_option)")
+            print(f"    case $opt in")
+        else:
+            print("    case $prev in")
+
         for opt in self.arg_actions:
             case = '|'.join(opt.option_strings)
             print(f"        {case}) _{self.namespace}_{opt.dest}_values ;;")
 
         print(f"        *) _{self.namespace}_options ;;")
         print("    esac")
+
+        if self.with_descriptions:
+            print(f"\n    _{self.namespace}_add_descriptions")
+
         print("}")
 
     def print_value_function_stubs(self):
@@ -75,3 +89,56 @@ class CompletionGenerator():
         print(f"        $(compgen -W \"${{_{self.namespace}_flag_options[*]}}\" -- \"${{cur}}\")")
         print(f"    )")
         print("}")
+
+    def print_description_adder(self):
+        print(textwrap.dedent(f"""
+            _{self.namespace}_add_descriptions(){{
+
+                if (( ${{#COMPREPLY[@]}} <= 1 )) ; then
+                    return
+                fi
+
+                local max_comp=0
+                for c in "${{COMPREPLY[@]}}" ; do
+                    if ((${{#c}} > max_comp)) ; then
+                        max_comp=${{#c}}
+                    fi
+                done
+
+                local i max_desc_len=$((COLUMNS - max_comp - 4))
+                if ((max_desc_len < 10 )) ; then
+                    return 1
+                fi
+
+                for((i=0;i<${{#COMPREPLY[@]}};i++));do
+                    local comp=${{COMPREPLY[i]}}
+                    local desc=${{_{self.namespace}_descriptions[$comp]}}
+
+                    if [[ -z ${{desc}} ]] ; then
+                        continue
+                    fi
+                    if ((${{#desc}} > max_desc_len)) ; then
+                        desc=${{desc:0:$((max_desc_len-1))}}
+                        desc+='…'
+                    fi
+                    printf -v COMPREPLY[i] "%-${{max_comp}}s (%s)" "${{comp}}" "${{desc}}"
+                done
+            }}
+            """))
+
+
+    def print_description_array(self):
+        print(f"declare -gA _{self.namespace}_descriptions=(")
+        for a in self.parser._actions:
+            print(f"Action {str(a.option_strings):<28}: {type(a)}, nargs={a.nargs}", file=sys.stderr)
+            if not a.help:
+                continue
+            if isinstance(a, argparse._StoreTrueAction):
+                desc=f"flag: {a.help}"
+            elif isinstance(a, argparse._StoreAction):
+                desc=f"arg: {a.help}"
+            else:
+                desc=f" - : {a.help}"
+            for s in a.option_strings:
+                print(f"    [{s}]=\"{desc}\"")
+        print(")")

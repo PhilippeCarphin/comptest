@@ -48,22 +48,23 @@ from .comptest import CompletionRunner
 def get_args():
     # for x in p._actions: print(y.extend(x.option_strings))
     p = argparse.ArgumentParser()
-    p.add_argument("--init-files", "-f", metavar='FILE', nargs='*', default=[], help="Files to source before attempting completion")
+    # TODO: --init-files nargs should be '+' I think.
+    p.add_argument("--init-files", "-f", metavar='FILE', nargs='+', default=[], help="Files to source before attempting completion")
     p.add_argument("--bash-command", help="Bash command (default 'bash --norc')")
     p.add_argument("-d", metavar='DIRECTORY', help="Working directory to be in")
     p.add_argument("cmd", metavar='CMD', help="Command to complete")
-    p.add_argument("--debug", action='store_true')
+    p.add_argument("--debug", action='store_true', help="Set log level to DEBUG")
     p.add_argument("--load-bash-completion", "-l", action='store_true', help="Load BASH completion from likely directories")
     p.add_argument("--log-file", help="Log file")
     p.add_argument("--xtrace-log", help="Log file for xtrace output", default=os.path.expanduser("~/.log.txt"))
     p.add_argument("-x", action="store_true", help="Activate xtrace (set -x)")
     p.add_argument("--verbose-ps4", action='store_true', help="Set verbose PS4.  Only useful if -x option is used")
-    p.add_argument("--interact", action='store_true')
-    p.add_argument("--color", choices=['red', 'green', 'blue'])
+    p.add_argument("--interact", action='store_true', help="Take control of the shell after getting completions")
+    p.add_argument("--color", choices=['red', 'green', 'blue'], help="Only for testing")
     p.add_argument("--generate-completion", action='store_true', help="Generate completion for this script")
     if 'GENERATE_COMPLETION' in os.environ:
         import compgen
-        compgen.completion_from_parser(p, 'compget', ['compget'])
+        compgen.completion_from_parser(p, 'compget', ['compget'], with_descriptions=True)
         sys.exit(0)
     return p.parse_args()
 

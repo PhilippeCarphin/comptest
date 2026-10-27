@@ -2,6 +2,24 @@
 _compget_arg_options=(--init-files -f --bash-command -d --log-file --xtrace-log --color)
 _compget_flag_options=(-h --help --debug --load-bash-completion -l -x --verbose-ps4 --interact --generate-completion)
 
+declare -gA _compget_descriptions=(
+    [-h]=" - : show this help message and exit"
+    [--help]=" - : show this help message and exit"
+    [--init-files]="arg: Files to source before attempting completion"
+    [-f]="arg: Files to source before attempting completion"
+    [--bash-command]="arg: Bash command (default 'bash --norc')"
+    [-d]="arg: Working directory to be in"
+    [--debug]="flag: Set log level to DEBUG"
+    [--load-bash-completion]="flag: Load BASH completion from likely directories"
+    [-l]="flag: Load BASH completion from likely directories"
+    [--log-file]="arg: Log file"
+    [--xtrace-log]="arg: Log file for xtrace output"
+    [-x]="flag: Activate xtrace (set -x)"
+    [--verbose-ps4]="flag: Set verbose PS4.  Only useful if -x option is used"
+    [--interact]="flag: Take control of the shell after getting completions"
+    [--color]="arg: Only for testing"
+    [--generate-completion]="flag: Generate completion for this script"
+)
 
 _compget(){
 local cur prev words cword
@@ -16,7 +34,43 @@ _init_completion || return
         --color) _compget_color_values ;;
         *) _compget_options ;;
     esac
+
+    _compget_add_descriptions
 }
+
+_compget_add_descriptions(){
+
+    if (( ${#COMPREPLY[@]} <= 1 )) ; then
+        return
+    fi
+
+    local max_comp=0
+    for c in "${COMPREPLY[@]}" ; do
+        if ((${#c} > max_comp)) ; then
+            max_comp=${#c}
+        fi
+    done
+
+    local i max_desc_len=$((COLUMNS - max_comp - 4))
+    if ((max_desc_len < 10 )) ; then
+        return 1
+    fi
+
+    for((i=0;i<${#COMPREPLY[@]};i++));do
+        local comp=${COMPREPLY[i]}
+        local desc=${_compget_descriptions[$comp]}
+
+        if [[ -z ${desc} ]] ; then
+            continue
+        fi
+        if ((${#desc} > max_desc_len)) ; then
+            desc=${desc:0:$((max_desc_len-1))}
+            desc+='…'
+        fi
+        printf -v COMPREPLY[i] "%-${max_comp}s (%s)" "${comp}" "${desc}"
+    done
+}
+
 _compget_options(){
     COMPREPLY+=(
         $(compgen -W "${_compget_arg_options[*]}" -- "${cur}")
