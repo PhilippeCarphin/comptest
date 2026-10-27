@@ -3,11 +3,11 @@ PREFIX ?= $(HOME)/.local
 compfile=share/bash-completion/completions/_compget
 
 
-install-dev:
+install-dev: compfile
 	python3 -m pip install --user -e .
-	ln -s $(PWD)/$(compfile) $(PREFIX)/$(compfile)
+	ln -sf $(PWD)/$(compfile) $(PREFIX)/$(compfile)
 
-install:
+install: compfile
 	python3 -m pip install --user .
 	install -D $(PREFIX)/share/bash-completion/completions
 	install $(compfile) $(PREFIX)/$(compfile)
