@@ -1,6 +1,10 @@
 
 
 import subprocess
+import os
+this_dir = os.path.dirname(__file__)
+sys.path.append(os.path.normpath(os.path.join(this_dir, "..", "src", "python")))
+
 
 with open("_salad", 'w') as f:
     subprocess.run(['python3', 'salad.py'], stdout=f)
