@@ -2,10 +2,10 @@ import argparse
 import textwrap
 import sys
 
-def completion_from_parser(parser: argparse.ArgumentParser, namespace: str, commands: list[str], with_descriptions=False):
+def completion_from_parser(parser: argparse.ArgumentParser, namespace: str, commands: list[str], with_descriptions=False, advanced=False):
     if isinstance(commands, str):
         raise TypeError("Argument commands must be a sequence, not 'str'")
-    CompletionGenerator(parser=parser, namespace=namespace, commands=commands, with_descriptions=with_descriptions).generate()
+    CompletionGenerator(parser=parser, namespace=namespace, commands=commands, with_descriptions=with_descriptions, advanced=advanced).generate()
 
 class CompletionGenerator():
     def __init__(self, parser, namespace, commands, with_descriptions=False, advanced=False):
@@ -17,6 +17,7 @@ class CompletionGenerator():
         self.get_action()
         self.commands = commands
         self.with_descriptions = with_descriptions
+        self.advanced = advanced
 
     def get_action(self):
         for a in self.parser._actions:
@@ -38,6 +39,8 @@ class CompletionGenerator():
             self.print_description_adder()
         self.print_generic_options()
         self.print_value_function_stubs()
+        if self.advanced:
+            self.print_get_completed_option()
         print(f"complete -F _{self.namespace} {' '.join(self.commands)}")
 
     def print_arrays(self):
@@ -142,3 +145,51 @@ class CompletionGenerator():
             for s in a.option_strings:
                 print(f"    [{s}]=\"{desc}\"")
         print(")")
+
+    #
+    # WIP: Can be improved to make nicer code.  Even though this code is
+    # generated my goal with this package is to generate exemplary completion
+    # code since the goal is to generate a script that I will continue myself
+    #
+    # For each option, check "am I completing arguments for that option" which
+    # means
+    # - with word = ${words[cword-i]} for i in range(a.nargs+1)
+    #   - if word is the option: we are completing the option
+    #   - if along the way we encounter a word that starts with '-' that
+    #     is not the option, we are not completing that option.
+    #
+    # If we try to do this with one for-loop, then the cases to check at
+    # each iteration will change so although it is repetitive code, we'll never
+    # have to write it.
+    #
+    def print_get_completed_option(self):
+        print(f"_{self.namespace}_get_completed_option(){{")
+        print(f"    if [[ ${{cur}} == -* ]] ; then return ; fi")
+        for a in self.parser._actions:
+            if a.nargs is None:
+                # Options that take one argument
+                print(f"    case ${{prev}} in {'|'.join(a.option_strings)}) echo {a.option_strings[0]} ; return ;; esac")
+            elif a.nargs == "*":
+                print(textwrap.indent(textwrap.dedent(f"""
+                for ((i=0;i<=${{#words[@]}};i++)) ; do
+                    word=${{words[cword-i]}}
+                    case $word in {'|'.join(a.option_strings)}) echo "{a.option_strings[0]}" ; return ;; esac
+                    if [[ $word == -* ]] ; then break ; fi
+                done"""), "    "))
+            elif a.nargs == "+":
+                print(textwrap.indent(textwrap.dedent(f"""
+                for ((i=0;i<=${{#words[@]}};i++)) ; do
+                    word=${{words[cword-i]}}
+                    case $word in {'|'.join(a.option_strings)}) echo "{a.option_strings[0]}" ; return ;; esac
+                    if [[ $word == -* ]] ; then break ; fi
+                done"""), "    "))
+            elif a.nargs == 0:
+                pass # nothing to do, flag options don't have args
+            elif isinstance(a.nargs, int):
+                print(textwrap.indent(textwrap.dedent(f"""
+                for ((i=0;i<={a.nargs};i++)) ; do
+                    word=${{words[cword-i]}}
+                    case $word in {'|'.join(a.option_strings)}) echo "{a.option_strings[0]}" ; return ;; esac
+                    if [[ $word == -* ]] ; then break ; fi
+                done"""), "    "))
+        print("}")

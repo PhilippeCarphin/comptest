@@ -1,0 +1,63 @@
+
+_salad_arg_options=(--dressing -d --seasoning -s --vegetable -v --fruit -f)
+_salad_flag_options=(-h --help)
+
+
+_salad(){
+local cur prev words cword
+_init_completion || return
+
+    local opt=$(_salad_get_completed_option)
+    case $opt in
+        --dressing|-d) _salad_dressing_values ;;
+        --seasoning|-s) _salad_seasoning_values ;;
+        --vegetable|-v) _salad_vegetable_values ;;
+        --fruit|-f) _salad_fruit_values ;;
+        *) _salad_options ;;
+    esac
+}
+_salad_options(){
+    COMPREPLY+=(
+        $(compgen -W "${_salad_arg_options[*]}" -- "${cur}")
+        $(compgen -W "${_salad_flag_options[*]}" -- "${cur}")
+    )
+}
+_salad_dressing_values(){
+    COMPREPLY=($(compgen -W 'italian ranch' -- "${cur}"))
+}
+
+_salad_seasoning_values(){
+    COMPREPLY=($(compgen -W 'salt pepper' -- "${cur}"))
+}
+
+_salad_vegetable_values(){
+    COMPREPLY=($(compgen -W 'celery carrot broccoli potato' -- "${cur}"))
+}
+
+_salad_fruit_values(){
+    COMPREPLY=($(compgen -W 'apple apricot banana cherry' -- "${cur}"))
+}
+
+_salad_get_completed_option(){
+    if [[ ${cur} == -* ]] ; then return ; fi
+    case ${prev} in --dressing|-d) echo --dressing ; return ;; esac
+
+    for ((i=0;i<=${#words[@]};i++)) ; do
+        word=${words[cword-i]}
+        case $word in --seasoning|-s) echo "--seasoning" ; return ;; esac
+        if [[ $word == -* ]] ; then break ; fi
+    done
+
+    for ((i=0;i<=${#words[@]};i++)) ; do
+        word=${words[cword-i]}
+        case $word in --vegetable|-v) echo "--vegetable" ; return ;; esac
+        if [[ $word == -* ]] ; then break ; fi
+    done
+
+    for ((i=0;i<=3;i++)) ; do
+        word=${words[cword-i]}
+        case $word in --fruit|-f) echo "--fruit" ; return ;; esac
+        if [[ $word == -* ]] ; then break ; fi
+    done
+}
+complete -F _salad salad

@@ -20,3 +20,7 @@ uninstall:
 compfile:
 	PYTHONPATH=$(PWD)/src/python GENERATE_COMPLETION=1 \
 	    python3 -c "import comptest.compget; comptest.compget.main()" > $(compfile)
+
+.PHONY: test
+test:
+	env -C test/argparse-tests python3 test-it.py
