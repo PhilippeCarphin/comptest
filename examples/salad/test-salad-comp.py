@@ -1,7 +1,7 @@
 
 import comptest
 bash_comp = comptest.find_bash_completion()
-c = comptest.CompletionRunner(init_files=["examples/_salad", bash_comp])
+c = comptest.CompletionRunner(init_files=["examples/salad/_salad", bash_comp])
 status = 0
 def test(cmd, expected, expect_failure=False):
     if isinstance(expected, str):
