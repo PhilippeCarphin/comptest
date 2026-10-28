@@ -26,11 +26,14 @@ compfile:
 examples/salad/_salad:
 	$(pythonpath) GENERATE_COMPLETION=1 \
 	    python3 examples/salad/salad.py >$@
+salad_compget = bin/compget --load-bash-completion --init-files examples/salad/_salad --
+
 demo-compgen: examples/salad/_salad
+
 demo-compget: examples/salad/_salad
-	@printf "\033[1;36mGetting completions for arguments to --vegetable\033[0m\n"
-	bin/compget --load-bash-completion --init-files $< -- 'salad --vegetable '
-	@printf "\033[1;36mGetting options for command\033[0m\n"
-	bin/compget --load-bash-completion --init-files $< -- 'salad --'
+	$(salad_compget) 'salad --vegetable '
+	$(salad_compget) 'salad '
 demo-comptest: examples/salad/_salad
 	python3 examples/salad/test-salad-comp.py
+clean:
+	examples/salad/_salad
