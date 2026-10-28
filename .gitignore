@@ -1,3 +1,4 @@
 __pycache__
 comptest.1
 *.egg-info
+xtrace_log.txt
