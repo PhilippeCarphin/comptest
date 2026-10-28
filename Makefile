@@ -1,7 +1,7 @@
 PREFIX ?= $(HOME)/.local
 
 compfile=share/bash-completion/completions/_compget
-pythonpath = PYTHONPATH=$(PWD)/src/python3
+pythonpath = PYTHONPATH=$(PWD)/src/python
 
 
 install-dev: compfile
