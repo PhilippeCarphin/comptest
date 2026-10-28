@@ -1,5 +1,7 @@
+#!/usr/bin/env bash # hint for editors
 
-_compget_arg_options=(--init-files -f --bash-command -d --log-file --xtrace-log --color)
+
+_compget_arg_options=(--init-files -f --bash-command -d --log-file --xtrace-log --init-commands -c --color)
 _compget_flag_options=(-h --help --debug --load-bash-completion -l -x --verbose-ps4 --interact --generate-completion)
 
 declare -gA _compget_descriptions=(
@@ -17,6 +19,8 @@ declare -gA _compget_descriptions=(
     [-x]="flag: Activate xtrace (set -x)"
     [--verbose-ps4]="flag: Set verbose PS4.  Only useful if -x option is used"
     [--interact]="flag: Take control of the shell after getting completions"
+    [--init-commands]="arg: init commands (done after sourcing init files)"
+    [-c]="arg: init commands (done after sourcing init files)"
     [--color]="arg: Only for testing"
     [--generate-completion]="flag: Generate completion for this script"
 )
@@ -31,6 +35,7 @@ _init_completion || return
         -d) _compget_d_values ;;
         --log-file) _compget_log_file_values ;;
         --xtrace-log) _compget_xtrace_log_values ;;
+        --init-commands|-c) _compget_init_commands_values ;;
         --color) _compget_color_values ;;
         *) _compget_options ;;
     esac
@@ -94,6 +99,10 @@ _compget_log_file_values(){
 }
 
 _compget_xtrace_log_values(){
+    : TODO
+}
+
+_compget_init_commands_values(){
     : TODO
 }
 

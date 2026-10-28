@@ -60,6 +60,7 @@ def get_args():
     p.add_argument("-x", action="store_true", help="Activate xtrace (set -x)")
     p.add_argument("--verbose-ps4", action='store_true', help="Set verbose PS4.  Only useful if -x option is used")
     p.add_argument("--interact", action='store_true', help="Take control of the shell after getting completions")
+    p.add_argument("--init-commands", "-c", nargs="+", help="init commands (done after sourcing init files)")
     p.add_argument("--color", choices=['red', 'green', 'blue'], help="Only for testing")
     p.add_argument("--generate-completion", action='store_true', help="Generate completion for this script")
     if 'GENERATE_COMPLETION' in os.environ:
@@ -84,7 +85,7 @@ def main():
     if args.generate_completion:
         form_autocomplete(get_parser(), "compget")
         return
-    init_commands = []
+    init_commands = args.init_commands
     if args.load_bash_completion:
         bash_comp = find_bash_completion()
         if bash_comp:
