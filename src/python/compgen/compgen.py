@@ -133,7 +133,6 @@ class CompletionGenerator():
     def print_description_array(self):
         print(f"declare -gA _{self.namespace}_descriptions=(")
         for a in self.parser._actions:
-            print(f"Action {str(a.option_strings):<28}: {type(a)}, nargs={a.nargs}", file=sys.stderr)
             if not a.help:
                 continue
             if isinstance(a, argparse._StoreTrueAction):
