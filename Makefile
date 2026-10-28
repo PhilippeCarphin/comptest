@@ -6,6 +6,7 @@ pythonpath = PYTHONPATH=$(PWD)/src/python
 
 install-dev: compfile
 	python3 -m pip install -e .
+	mkdir -p $(PREFIX)/share/bash-completion/completions
 	ln -sf $(PWD)/$(compfile) $(PREFIX)/$(compfile)
 
 install: compfile
