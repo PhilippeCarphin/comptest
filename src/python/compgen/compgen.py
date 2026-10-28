@@ -33,6 +33,7 @@ class CompletionGenerator():
                 print(f"Unhandled type {type(a)}", file=sys.stderr)
 
     def generate(self):
+        print("#!/usr/bin/env bash # hint for editors\n")
         self.print_arrays()
         self.print_main_function()
         if self.with_descriptions:
