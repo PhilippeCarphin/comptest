@@ -56,7 +56,7 @@ def get_args():
     p.add_argument("--debug", action='store_true', help="Set log level to DEBUG")
     p.add_argument("--load-bash-completion", "-l", action='store_true', help="Load BASH completion from likely directories")
     p.add_argument("--log-file", help="Log file")
-    p.add_argument("--xtrace-log", help="Log file for xtrace output", default=os.path.expanduser("~/.log.txt"))
+    p.add_argument("--xtrace-log", help="Log file for xtrace output")
     p.add_argument("-x", action="store_true", help="Activate xtrace (set -x)")
     p.add_argument("--verbose-ps4", action='store_true', help="Set verbose PS4.  Only useful if -x option is used")
     p.add_argument("--interact", action='store_true', help="Take control of the shell after getting completions")
@@ -102,12 +102,12 @@ def main():
     comp = CompletionRunner(
         bash_command=args.bash_command,
         PS4=('+ ' if not args.verbose_ps4 else
-             '+ \033[35m${BASH_SOURCE[0]:-}\033[36m:\033[1;37m${FUNCNAME:-}\033[22;36m:\033[32m${LINENO:-x}\033[36m:\033[0m '),
+             '+ \033[35m${BASH_SOURCE[0]##*/}\033[36m:\033[1;37m${FUNCNAME:-}\033[22;36m:\033[32m${LINENO:-x}\033[36m:\033[0m '),
         init_files=args.init_files,
         init_commands=init_commands,
         directory=args.d,
         logfile=args.log_file,
-        xtrace=args.x,
+        xtrace=(args.x or args.xtrace_log),
         xtrace_log=args.xtrace_log
     )
 

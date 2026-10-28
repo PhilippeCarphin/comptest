@@ -58,7 +58,7 @@ class CompletionRunner:
     """
     Test completions for a command.
     """
-    def __init__(self, PS1="@/", PS4='+ ', xtrace=False, xtrace_log=None, directory=None, init_files=None, init_commands=None, logfile=None, bash_command=None, magic_mark="YAYBOOYAYBOO"):
+    def __init__(self, PS1="@/", PS4=None, xtrace=False, xtrace_log=None, directory=None, init_files=None, init_commands=None, logfile=None, bash_command=None, magic_mark="YAYBOOYAYBOO"):
         self.PS1 = PS1
         self.PS4 = PS4
         self.magic_mark = magic_mark
@@ -69,7 +69,11 @@ class CompletionRunner:
         env['INPUTRC'] = "/dev/null"
         env['TERM']='dumb'
         env['PS1'] = self.PS1
-        env['PS4'] = self.PS4
+
+        # Transmit PS4 through the environment because sending a command that
+        # sets PS4 would be a quoting nightmare.
+        if self.PS4:
+            env['PS4'] = self.PS4
 
         self.bash = pexpect.spawn(
             self.bash_command,
@@ -80,7 +84,7 @@ class CompletionRunner:
             logfile=open(logfile,'a') if logfile else None
         )
 
-        if xtrace:
+        if xtrace or xtrace_log:
             if init_commands is None:
                 init_commands = []
             if xtrace_log is None:
