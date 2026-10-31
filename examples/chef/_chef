@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+
+_chef(){
+    COMPREPLY=('bing', 'bong')
+}
+
+complete -F _chef chef

@@ -28,6 +28,9 @@ examples/salad/_salad:
 	    python3 examples/salad/salad.py >$@
 salad_compget = bin/compget --load-bash-completion --init-files examples/salad/_salad --
 
+test-chef:
+	$(pythonpath) python3 examples/chef/test-chef.py
+
 demo-compgen: examples/salad/_salad
 
 demo-compget: examples/salad/_salad
