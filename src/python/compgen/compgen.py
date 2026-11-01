@@ -7,6 +7,42 @@ def completion_from_parser(parser: argparse.ArgumentParser, namespace: str, comm
         raise TypeError("Argument commands must be a sequence, not 'str'")
     CompletionGenerator(parser=parser, namespace=namespace, commands=commands, with_descriptions=with_descriptions, advanced=advanced).generate()
 
+def analyze(p: argparse.ArgumentParser, test=False):
+    """ Print info on the parser.  This is mainly a demonstration of how get
+    info from a given parser or tests"""
+    tests = []
+    base_actions = []
+    subparser_action = None
+    for a in p._actions:
+        if isinstance(a, argparse._SubParsersAction):
+            subparser_action = a
+        else:
+            base_actions.append(a)
+
+    if subparser_action:
+        print(f"Toplevel options")
+        base_option_strings = []
+        for a in base_actions:
+            base_option_strings.extend(a.option_strings)
+            print(f"    {a.option_strings}: {a.help}")
+
+        subcommands = list(subparser_action.choices.keys())
+
+        tests.append(f"test('chef ', {[*subcommands, *base_option_strings]})")
+        for subcommand, sp in subparser_action.choices.items():
+            print(f"    {subcommand}")
+            arguments = []
+            for a in sp._actions:
+                print(f"        {a.option_strings}: {a.choices or ''} {a.help}")
+                arguments.extend(a.option_strings)
+                if a.choices:
+                    for os in a.option_strings:
+                        tests.append(f"test('chef {subcommand} {os} ', {a.choices})")
+            tests.append(f"test('chef {subcommand} ', {arguments})")
+
+    for t in tests:
+        print(t)
+
 class CompletionGenerator():
     def __init__(self, parser, namespace, commands, with_descriptions=False, advanced=False):
         self.parser = parser
@@ -14,10 +50,12 @@ class CompletionGenerator():
         self.arg_actions = []
         self.flag_actions = []
         self.posarg_actions = []
-        self.get_action()
+        self.subparsers = None
         self.commands = commands
         self.with_descriptions = with_descriptions
         self.advanced = advanced
+
+        self.get_action()
 
     def get_action(self):
         for a in self.parser._actions:
@@ -29,6 +67,8 @@ class CompletionGenerator():
                     self.posarg_actions.append(a)
                 else:
                     self.arg_actions.append(a)
+            elif isinstance(a, argparse._SubParsersAction):
+                self.subparsers = a
             else:
                 print(f"Unhandled type {type(a)}", file=sys.stderr)
 
@@ -42,6 +82,10 @@ class CompletionGenerator():
         self.print_value_function_stubs()
         if self.advanced:
             self.print_get_completed_option()
+
+        if self.subparsers:
+            for choice, sp in self.subparsers.choices.items():
+                CompletionGenerator(sp, f'{self.namespace}_{choice}', []).generate()
         print(f"complete -F _{self.namespace} {' '.join(self.commands)}")
 
     def print_arrays(self):
@@ -59,6 +103,11 @@ class CompletionGenerator():
             _init_completion || return
         """))
 
+        if self.subparsers is not None:
+            self.get_subcommand()
+
+            print("if [[ -z ${subcommand} ]] ; then")
+
         if self.advanced:
             print(f"    local opt=$(_{self.namespace}_get_completed_option)")
             print(f"    case $opt in")
@@ -72,10 +121,31 @@ class CompletionGenerator():
         print(f"        *) _{self.namespace}_options ;;")
         print("    esac")
 
+        if self.subparsers:
+            print("else")
+            print(f"_{self.namespace}_${{subcommand}}")
+            print("fi")
+
+
         if self.with_descriptions:
             print(f"\n    _{self.namespace}_add_descriptions")
 
         print("}")
+
+    def get_subcommand(self):
+        print("""local subcommand
+        for((i=0;i<${#words[@]};i++)) ; do
+            case ${words[i]} in""")
+        for a in self.parser._actions:
+            if isinstance(a, argparse._StoreTrueAction):
+                print(f"{'|'.join(a.option_strings)}) ;;")
+            elif isinstance(a, argparse._StoreAction):
+                print(f"{'|'.join(a.option_strings)}) ((i++)) ;;")
+
+        print(f"{'|'.join(self.subparsers.choices.keys())}) subcommand=${{words[i]}} ; break ;;")
+        print(f"esac")
+        print(f"done")
+        print()
 
     def print_value_function_stubs(self):
         for opt in self.arg_actions:

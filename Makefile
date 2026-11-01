@@ -3,6 +3,7 @@ PREFIX ?= $(HOME)/.local
 compfile=share/bash-completion/completions/_compget
 pythonpath = PYTHONPATH=$(PWD)/src/python
 
+all: test-chef-generated
 
 install-dev: compfile
 	python3 -m pip install -e .
@@ -28,6 +29,12 @@ examples/salad/_salad:
 	    python3 examples/salad/salad.py >$@
 salad_compget = bin/compget --load-bash-completion --init-files examples/salad/_salad --
 
+.PHONY: examples/chef/_chef_generated
+examples/chef/_chef_generated: examples/chef/chef.py
+	$(pythonpath) GENERATE_COMPLETION=1 \
+		python3 examples/chef/chef.py > examples/chef/_chef_generated
+test-chef-generated: examples/chef/_chef_generated
+	$(pythonpath) python3 examples/chef/test-chef.py --generated
 test-chef:
 	$(pythonpath) python3 examples/chef/test-chef.py
 

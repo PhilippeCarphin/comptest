@@ -2,6 +2,7 @@
 """ Cook some food """
 import argparse
 import sys
+import os
 import logging
 
 def get_args():
@@ -18,43 +19,15 @@ def get_args():
     p_prep = sp.add_parser("prep", help="Prep food")
     p_prep.add_argument("--bowl", choices=['large', 'small'])
     p_prep.add_argument("--vegetable", choices=['onion', 'carrot', 'potato'])
-    analyze(p)
+
+    if os.environ.get('GENERATE_COMPLETION',''):
+        import compgen
+        compgen.completion_from_parser(p, 'chef', ['chef'])
+        sys.exit(0)
+
 
     return p.parse_args()
 
-def analyze(p: argparse.ArgumentParser, test=False):
-    tests = []
-    base_actions = []
-    subparser_action = None
-    for a in p._actions:
-        if isinstance(a, argparse._SubParsersAction):
-            subparser_action = a
-        else:
-            base_actions.append(a)
-
-    if subparser_action:
-        print(f"Toplevel options")
-        base_option_strings = []
-        for a in base_actions:
-            base_option_strings.extend(a.option_strings)
-            print(f"    {a.option_strings}: {a.help}")
-
-        subcommands = list(subparser_action.choices.keys())
-
-        tests.append(f"test('chef ', {[*subcommands, *base_option_strings]})")
-        for subcommand, sp in subparser_action.choices.items():
-            print(f"    {subcommand}")
-            arguments = []
-            for a in sp._actions:
-                print(f"        {a.option_strings}: {a.choices or ''} {a.help}")
-                arguments.extend(a.option_strings)
-                if a.choices:
-                    for os in a.option_strings:
-                        tests.append(f"test('chef {subcommand} {os} ', {a.choices})")
-            tests.append(f"test('chef {subcommand} ', {arguments})")
-
-    for t in tests:
-        print(t)
 
 def main():
     args = get_args()

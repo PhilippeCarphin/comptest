@@ -1,11 +1,16 @@
 import comptest
 import os
+import argparse
+p = argparse.ArgumentParser()
+p.add_argument("--generated", action='store_true')
+args = p.parse_args()
 
 this_dir = os.path.dirname(__file__)
 
 bash_comp = comptest.find_bash_completion()
+init_file_basename = "_chef" if not args.generated else "_chef_generated"
 c = comptest.CompletionRunner(
-    init_files=[bash_comp, os.path.join(this_dir, "_chef")]
+    init_files=[bash_comp, os.path.join(this_dir, init_file_basename)]
 )
 
 def test(cmd, expected, expect_failure=False):
