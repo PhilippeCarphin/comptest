@@ -2,7 +2,9 @@ import argparse
 import textwrap
 import sys
 
-def completion_from_parser(parser: argparse.ArgumentParser, namespace: str, commands: list[str], with_descriptions=False, advanced=False):
+# TODO: WITH FUNCTIONS: If false, just have COMPREPLY=($(compgen ...)) directly
+# in the case statements and don't create _X_{opt}_values functions.
+def completion_from_parser(parser: argparse.ArgumentParser, namespace: str, commands: list[str], with_functions=True, with_descriptions=False, advanced=False):
     if isinstance(commands, str):
         raise TypeError("Argument commands must be a sequence, not 'str'")
     CompletionGenerator(parser=parser, namespace=namespace, commands=commands, with_descriptions=with_descriptions, advanced=advanced).generate()
@@ -43,19 +45,27 @@ def analyze(p: argparse.ArgumentParser, test=False):
     for t in tests:
         print(t)
 
+# TODO: Never decided to handle positional arguments
+
 class CompletionGenerator():
-    def __init__(self, parser, namespace, commands, with_descriptions=False, advanced=False):
+    def __init__(self, parser, namespace, commands, with_functions=False, with_descriptions=False, advanced=False):
         self.parser = parser
         self.namespace = namespace
         self.arg_actions = []
         self.flag_actions = []
         self.posarg_actions = []
         self.subparsers = None
+        self.subgenerartors = None
         self.commands = commands
         self.with_descriptions = with_descriptions
         self.advanced = advanced
+        self.with_functions = with_functions
 
         self.get_action()
+        if self.subparsers:
+            self.subgenerators = []
+            for choice, sp in self.subparsers.choices.items():
+                self.subgenerators.append(CompletionGenerator(sp, f'{self.namespace}_{choice}', []))
 
     def get_action(self):
         for a in self.parser._actions:
@@ -73,58 +83,79 @@ class CompletionGenerator():
                 print(f"Unhandled type {type(a)}", file=sys.stderr)
 
     def generate(self):
-        print("#!/usr/bin/env bash # hint for editors\n")
+        print("#!/usr/bin/env bash # hint for editors")
         self.print_arrays()
+        print()
         self.print_main_function()
+        if self.subparsers:
+            for subgen in self.subgenerators:
+                subgen.print_main_function()
         if self.with_descriptions:
             self.print_description_adder()
-        self.print_generic_options()
-        self.print_value_function_stubs()
+        # self.print_generic_options()
+        if self.with_functions:
+            self.print_value_function_stubs()
+            for subgen in self.subgenerators:
+                subgen.print_value_function_stubs()
         if self.advanced:
             self.print_get_completed_option()
-
-        if self.subparsers:
-            for choice, sp in self.subparsers.choices.items():
-                CompletionGenerator(sp, f'{self.namespace}_{choice}', []).generate()
-        print(f"complete -F _{self.namespace} {' '.join(self.commands)}")
+        if self.commands:
+            print(f"complete -F _{self.namespace} {' '.join(self.commands)}")
 
     def print_arrays(self):
         print(textwrap.dedent( f"""
             _{self.namespace}_arg_options=({' '.join((' '.join(o.option_strings) for o in self.arg_actions))})
             _{self.namespace}_flag_options=({' '.join((' '.join(o.option_strings) for o in self.flag_actions))})
-        """))
+            _{self.namespace}_options=("${{_{self.namespace}_arg_options[@]}}" "${{_{self.namespace}_flag_options[@]}}")"""))
+        if self.subparsers:
+            print(f"_{self.namespace}_subcommands=({' '.join(self.subparsers.choices.keys())})")
+            for subgen in self.subgenerators:
+                subgen.print_arrays()
+
         if self.with_descriptions:
             self.print_description_array()
 
     def print_main_function(self):
-        print(textwrap.dedent(f"""
-            _{self.namespace}(){{
+        print(f"_{self.namespace}(){{", end='')
+        print(textwrap.indent(textwrap.dedent(f"""
             local cur prev words cword
-            _init_completion || return
-        """))
+            _init_completion || return"""), '    '))
 
+        sc_indent = ''
         if self.subparsers is not None:
             self.get_subcommand()
 
-            print("if [[ -z ${subcommand} ]] ; then")
+            print("    if [[ -z ${subcommand} ]] ; then")
+            sc_indent = '    '
 
         if self.advanced:
-            print(f"    local opt=$(_{self.namespace}_get_completed_option)")
-            print(f"    case $opt in")
+            print(f"\n    {sc_indent}local opt=$(_{self.namespace}_get_completed_option)")
+            print(f"    {sc_indent}case $opt in")
         else:
-            print("    case $prev in")
+            print(f"\n    {sc_indent}case $prev in")
 
-        for opt in self.arg_actions:
-            case = '|'.join(opt.option_strings)
-            print(f"        {case}) _{self.namespace}_{opt.dest}_values ;;")
-
-        print(f"        *) _{self.namespace}_options ;;")
-        print("    esac")
+        for a in self.arg_actions:
+            case = '|'.join(a.option_strings)
+            if self.with_functions:
+                print(f"        {sc_indent}{case}) _{self.namespace}_{a.dest}_values ;;")
+            else:
+                print(f"        {sc_indent}{case}) ", end='')
+                if a.choices:
+                    print(f"COMPREPLY+=($(compgen -W \"{' '.join(a.choices)}\" -- \"${{cur}}\")) ;;")
+                else:
+                    print(f" : TODO ;;")
 
         if self.subparsers:
-            print("else")
-            print(f"_{self.namespace}_${{subcommand}}")
-            print("fi")
+            print(f"            *) COMPREPLY=($(compgen -W \"${{_{self.namespace}_subcommands[*]}} ${{_{self.namespace}_options[*]}}\" -- \"${{cur}}\")) ;;")
+        else:
+            print(f"        *) COMPREPLY=($(compgen -W \"${{_{self.namespace}_options[*]}}\" -- \"${{cur}}\")) ;;")
+
+        print(f"    {sc_indent}esac")
+
+        if self.subparsers:
+            print("    else")
+            print(f"        _{self.namespace}_${{subcommand}}")
+            print("    fi")
 
 
         if self.with_descriptions:
@@ -133,18 +164,20 @@ class CompletionGenerator():
         print("}")
 
     def get_subcommand(self):
-        print("""local subcommand
-        for((i=0;i<${#words[@]};i++)) ; do
-            case ${words[i]} in""")
+        print(textwrap.indent(textwrap.dedent("""
+            local subcommand
+            for((i=0;i<${#words[@]};i++)) ; do
+                case ${words[i]} in"""), '    '))
+
         for a in self.parser._actions:
             if isinstance(a, argparse._StoreTrueAction):
-                print(f"{'|'.join(a.option_strings)}) ;;")
+                print(f"            {'|'.join(a.option_strings)}) ;;")
             elif isinstance(a, argparse._StoreAction):
-                print(f"{'|'.join(a.option_strings)}) ((i++)) ;;")
+                print(f"            {'|'.join(a.option_strings)}) ((i++)) ;;")
 
-        print(f"{'|'.join(self.subparsers.choices.keys())}) subcommand=${{words[i]}} ; break ;;")
-        print(f"esac")
-        print(f"done")
+        print(f"            {'|'.join(self.subparsers.choices.keys())}) subcommand=${{words[i]}} ; break ;;")
+        print(f"        esac")
+        print(f"    done")
         print()
 
     def print_value_function_stubs(self):
