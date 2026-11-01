@@ -125,7 +125,7 @@ class CompletionGenerator():
         if self.subparsers is not None:
             self.get_subcommand()
 
-            print("    if [[ -z ${subcommand} ]] ; then")
+            print("    if [[ -z ${subcommand} ]] ; then", end='')
             sc_indent = '    '
 
         if self.advanced:
@@ -161,7 +161,7 @@ class CompletionGenerator():
         if self.with_descriptions:
             print(f"\n    _{self.namespace}_add_descriptions")
 
-        print("}")
+        print("}\n")
 
     def get_subcommand(self):
         print(textwrap.indent(textwrap.dedent("""

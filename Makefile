@@ -1,6 +1,6 @@
 PREFIX ?= $(HOME)/.local
 
-compfile=share/bash-completion/completions/_compget
+compfile=share/bash-completion/completions/compget
 pythonpath = PYTHONPATH=$(PWD)/src/python
 
 all: test-chef-generated

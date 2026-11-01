@@ -25,7 +25,6 @@ declare -gA _compget_descriptions=(
 )
 
 _compget(){
-
     local cur prev words cword
     _init_completion || return
 
