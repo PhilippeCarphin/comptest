@@ -29,7 +29,7 @@ def test(cmd, expected, expect_failure=False):
         else:
             print(f"\033[32mSuccess\033[0m: {cmd}: got {result}")
 
-test('chef ', ['cook', 'prep', '-h', '--help', '--debug'])
+test('chef ', ['cook', 'prep', '-h', '--help', '--debug', '-F'])
 test('chef cook --vessel ', ['pan', 'pot'])
 test('chef cook --temp ', ['high', 'medium', 'low'])
 test('chef cook --bowl ', ['large', 'small'])

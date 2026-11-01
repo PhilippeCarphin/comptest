@@ -7,6 +7,7 @@ import logging
 def get_args():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--debug", action='store_true', help="Turn on debug logging")
+    p.add_argument("-F", help="Config file")
     sp = p.add_subparsers()
 
     p_cook = sp.add_parser("cook", help="Cook food")

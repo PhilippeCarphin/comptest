@@ -1,7 +1,84 @@
 #!/usr/bin/env bash
 
+_chef_cook_options=(--vessel --temp --bowl -h --help)
+_chef_prep_options=(--vegetable --bowl -h --help)
+_chef_generic_options=(--debug --help -F -h)
+_chef_subcommands=(prep cook)
+
 _chef(){
-    COMPREPLY=('bing', 'bong')
+    # BEGIN STATIC
+    local cur prev words cword
+    _init_completion || return
+
+    local subcommand
+    for((i=0;i<${#words[@]};i++)) ; do
+        case ${words[i]} in
+    # END STATIC
+    #
+            # PRINT THE CASES
+            # for a in x.actions
+            #   if a.isinstance(storetrue action)
+            #     print("{'|'.join(a.option_strings)}) ;;
+            #   elif a isinstance(value action
+            #     print("{'|'.join(a.option_strings)}) i=$((i+1)) ;;
+            # print("{|.join(subcommands)} subcommand=${words[i]} ;;
+            # print("esac
+            --debug) ;;
+            --help) ;;
+            -F) i=$((i+1)) ;;
+            cook|prep)  subcommand=${words[i]} ; break ;;
+    # BEGIN STATIC
+        esac
+    done
+
+    if [[ -z ${subcommand} ]] ; then
+        case $prev in
+    # END STATIC
+
+        # MAIN CASE
+            -F) _chef_F_values ;;
+            *) COMPREPLY=($(compgen -W "${_chef_generic_options[*]} ${_chef_subcommands[*]}" -- "${cur}"))
+        esac
+    else
+        # STATIC
+        _chef_${subcommand}
+    fi
+}
+
+_chef_cook(){
+    case $prev in
+        --vessel) _chef_cook_vessel_values ;;
+        --temp) _chef_cook_temp_values ;;
+        --bowl) _chef_cook_bowl_values ;;
+        *) COMPREPLY=($(compgen -W "${_chef_cook_options[*]}" -- "${cur}")) ;;
+    esac
+}
+
+_chef_prep(){
+    case $prev in
+        --vegetable) _chef_prep_vegetable_values ;;
+        --bowl) _chef_prep_bowl_values ;;
+        *) COMPREPLY=($(compgen -W "${_chef_prep_options[*]}" -- "${cur}")) ;;
+    esac
+}
+_chef_prep_vegetable_values(){
+    COMPREPLY=($(compgen -W "onion carrot potato" -- "${cur}"))
+}
+
+_chef_cook_vessel_values(){
+    COMPREPLY=($(compgen -W "pan pot" -- "${cur}"))
+}
+
+_chef_cook_temp_values(){
+    COMPREPLY=($(compgen -W "low medium high" -- "${cur}"))
+}
+
+_chef_cook_bowl_values(){
+    COMPREPLY=($(compgen -W "large small" -- "${cur}"))
+}
+
+_chef_prep_bowl_values(){
+    COMPREPLY=($(compgen -W "large small" -- "${cur}"))
 }
 
 complete -F _chef chef
