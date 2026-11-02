@@ -241,10 +241,11 @@ class CompletionGenerator():
         print(f"declare -gA _{self.namespace}_descriptions=(")
         self.print_description_array_elements(self.parser)
         print(self.subparser_action, file=sys.stderr)
-        for ca in self.subparser_action._choices_actions:
-            print(f"    [{ca.dest}]=\"subcommand: {ca.help}\"")
-        for subcommand, sp in self.subparser_action.choices.items():
-            self.print_description_array_elements(sp)
+        if self.subparser_action:
+            for ca in self.subparser_action._choices_actions:
+                print(f"    [{ca.dest}]=\"subcommand: {ca.help}\"")
+            for subcommand, sp in self.subparser_action.choices.items():
+                self.print_description_array_elements(sp)
         print(")")
 
     def print_description_array_elements(self, p):
