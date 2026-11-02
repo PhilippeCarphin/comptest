@@ -29,6 +29,8 @@ def analyze(p: argparse.ArgumentParser, test=False):
             print(f"    {a.option_strings}: {a.help}")
 
         subcommands = list(subparser_action.choices.keys())
+        for ca in subparser_action._choices_actions:
+            print(f"Subcommand {ca.dest}: {ca.help}")
 
         tests.append(f"test('chef ', {[*subcommands, *base_option_strings]})")
         for subcommand, sp in subparser_action.choices.items():
@@ -54,7 +56,7 @@ class CompletionGenerator():
         self.arg_actions = []
         self.flag_actions = []
         self.posarg_actions = []
-        self.subparsers = None
+        self.subparser_action = None
         self.subgenerartors = None
         self.commands = commands
         self.with_descriptions = with_descriptions
@@ -62,9 +64,9 @@ class CompletionGenerator():
         self.with_functions = with_functions
 
         self.get_action()
-        if self.subparsers:
+        if self.subparser_action:
             self.subgenerators = []
-            for choice, sp in self.subparsers.choices.items():
+            for choice, sp in self.subparser_action.choices.items():
                 self.subgenerators.append(CompletionGenerator(sp, f'{self.namespace}_{choice}', []))
 
     def get_action(self):
@@ -78,16 +80,17 @@ class CompletionGenerator():
                 else:
                     self.arg_actions.append(a)
             elif isinstance(a, argparse._SubParsersAction):
-                self.subparsers = a
+                self.subparser_action = a
             else:
                 print(f"Unhandled type {type(a)}", file=sys.stderr)
 
     def generate(self):
+        print(f"Main PARSER: {self.parser}", file=sys.stderr)
         print("#!/usr/bin/env bash # hint for editors")
         self.print_arrays()
         print()
         self.print_main_function()
-        if self.subparsers:
+        if self.subparser_action:
             for subgen in self.subgenerators:
                 subgen.print_main_function()
         if self.with_descriptions:
@@ -107,8 +110,8 @@ class CompletionGenerator():
             _{self.namespace}_arg_options=({' '.join((' '.join(o.option_strings) for o in self.arg_actions))})
             _{self.namespace}_flag_options=({' '.join((' '.join(o.option_strings) for o in self.flag_actions))})
             _{self.namespace}_options=("${{_{self.namespace}_arg_options[@]}}" "${{_{self.namespace}_flag_options[@]}}")"""))
-        if self.subparsers:
-            print(f"_{self.namespace}_subcommands=({' '.join(self.subparsers.choices.keys())})")
+        if self.subparser_action:
+            print(f"_{self.namespace}_subcommands=({' '.join(self.subparser_action.choices.keys())})")
             for subgen in self.subgenerators:
                 subgen.print_arrays()
 
@@ -122,7 +125,7 @@ class CompletionGenerator():
             _init_completion || return"""), '    '))
 
         sc_indent = ''
-        if self.subparsers is not None:
+        if self.subparser_action is not None:
             self.get_subcommand()
 
             print("    if [[ -z ${subcommand} ]] ; then", end='')
@@ -145,14 +148,14 @@ class CompletionGenerator():
                 else:
                     print(f" : TODO ;;")
 
-        if self.subparsers:
+        if self.subparser_action:
             print(f"            *) COMPREPLY=($(compgen -W \"${{_{self.namespace}_subcommands[*]}} ${{_{self.namespace}_options[*]}}\" -- \"${{cur}}\")) ;;")
         else:
             print(f"        *) COMPREPLY=($(compgen -W \"${{_{self.namespace}_options[*]}}\" -- \"${{cur}}\")) ;;")
 
         print(f"    {sc_indent}esac")
 
-        if self.subparsers:
+        if self.subparser_action:
             print("    else")
             print(f"        _{self.namespace}_${{subcommand}}")
             print("    fi")
@@ -175,7 +178,7 @@ class CompletionGenerator():
             elif isinstance(a, argparse._StoreAction):
                 print(f"            {'|'.join(a.option_strings)}) ((i++)) ;;")
 
-        print(f"            {'|'.join(self.subparsers.choices.keys())}) subcommand=${{words[i]}} ; break ;;")
+        print(f"            {'|'.join(self.subparser_action.choices.keys())}) subcommand=${{words[i]}} ; break ;;")
         print(f"        esac")
         print(f"    done")
         print()
@@ -236,6 +239,15 @@ class CompletionGenerator():
 
     def print_description_array(self):
         print(f"declare -gA _{self.namespace}_descriptions=(")
+        self.print_description_array_elements(self.parser)
+        print(self.subparser_action, file=sys.stderr)
+        for ca in self.subparser_action._choices_actions:
+            print(f"    [{ca.dest}]=\"subcommand: {ca.help}\"")
+        for subcommand, sp in self.subparser_action.choices.items():
+            self.print_description_array_elements(sp)
+        print(")")
+
+    def print_description_array_elements(self, p):
         for a in self.parser._actions:
             if not a.help:
                 continue
@@ -247,8 +259,6 @@ class CompletionGenerator():
                 desc=f" - : {a.help}"
             for s in a.option_strings:
                 print(f"    [{s}]=\"{desc}\"")
-        print(")")
-
     #
     # WIP: Can be improved to make nicer code.  Even though this code is
     # generated my goal with this package is to generate exemplary completion
