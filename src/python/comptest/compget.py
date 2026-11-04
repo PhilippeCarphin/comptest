@@ -108,7 +108,7 @@ def main():
         init_commands=init_commands,
         directory=args.d,
         logfile=args.log_file,
-        xtrace=(args.x or args.xtrace_log),
+        xtrace=(args.x or (args.xtrace_log is not None)),
         xtrace_log=args.xtrace_log
     )
 
