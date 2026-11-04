@@ -6,6 +6,7 @@ import os
 import pexpect
 import logging
 import time
+import textwrap
 
 # NOTE: I learned how pexpect works and how to use it from a mix of experimentation
 # and looking at the code of 'test/t/conftest.py' from the the bash-completion
@@ -177,10 +178,20 @@ class CompletionRunner:
                 pexpect.TIMEOUT,
             ]
         )
+        log_msg = f"expect returned, match_no={match_no}: "
         if match_no == 0:
+            logging.debug(log_msg + "multiple lines")
             results = self.bash.before.strip().splitlines()
+        elif match_no == 1:
+            logging.debug(log_msg + "no completion")
+            results = None
         elif match_no == 2:
+            logging.debug(log_msg + "single completion (as suffix)")
             results = self.bash.match.group(1)
+        elif match_no == 3:
+            logging.debug(log_msg + "error messages")
+            logging.warning(f"Completion produced error messages:\n{textwrap.indent(self.bash.match.group(1), "   |")}")
+            results = None
         else:
             results = None
 
