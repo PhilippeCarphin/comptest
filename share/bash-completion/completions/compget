@@ -29,18 +29,19 @@ _compget(){
     _init_completion || return
 
     case $prev in
-        --init-files|-f)  : TODO ;;
+        -f|--init-files)  : TODO ;;
         --bash-command)  : TODO ;;
         -d)  : TODO ;;
         --log-file)  : TODO ;;
         --xtrace-log)  : TODO ;;
-        --init-commands|-c)  : TODO ;;
+        -c|--init-commands)  : TODO ;;
         --color) COMPREPLY+=($(compgen -W "red green blue" -- "${cur}")) ;;
         *) COMPREPLY=($(compgen -W "${_compget_options[*]}" -- "${cur}")) ;;
     esac
 
     _compget_add_descriptions
 }
+
 
 _compget_add_descriptions(){
 

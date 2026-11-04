@@ -124,36 +124,14 @@ class CompletionGenerator():
             local cur prev words cword
             _init_completion || return"""), '    '))
 
-        sc_indent = ''
+        sc_indent = '    '
         if self.subparser_action is not None:
             self.get_subcommand()
 
             print("    if [[ -z ${subcommand} ]] ; then", end='')
-            sc_indent = '    '
+            sc_indent = '        '
 
-        if self.advanced:
-            print(f"\n    {sc_indent}local opt=$(_{self.namespace}_get_completed_option)")
-            print(f"    {sc_indent}case $opt in")
-        else:
-            print(f"\n    {sc_indent}case $prev in")
-
-        for a in self.arg_actions:
-            case = '|'.join(a.option_strings)
-            if self.with_functions:
-                print(f"        {sc_indent}{case}) _{self.namespace}_{a.dest}_values ;;")
-            else:
-                print(f"        {sc_indent}{case}) ", end='')
-                if a.choices:
-                    print(f"COMPREPLY+=($(compgen -W \"{' '.join(a.choices)}\" -- \"${{cur}}\")) ;;")
-                else:
-                    print(f" : TODO ;;")
-
-        if self.subparser_action:
-            print(f"            *) COMPREPLY=($(compgen -W \"${{_{self.namespace}_subcommands[*]}} ${{_{self.namespace}_options[*]}}\" -- \"${{cur}}\")) ;;")
-        else:
-            print(f"        *) COMPREPLY=($(compgen -W \"${{_{self.namespace}_options[*]}}\" -- \"${{cur}}\")) ;;")
-
-        print(f"    {sc_indent}esac")
+        self.option_case_statement(indent=sc_indent)
 
         if self.subparser_action:
             print("    else")
@@ -182,6 +160,34 @@ class CompletionGenerator():
         print(f"        esac")
         print(f"    done")
         print()
+
+    def option_case_statement(self, indent=''):
+        if self.advanced:
+            print(f"\n{indent}local opt=$(_{self.namespace}_get_completed_option)")
+            print(f"{indent}case $opt in")
+        else:
+            print(f"\n{indent}case $prev in")
+
+        for a in self.arg_actions:
+            # Usually the long option is given first and the short on second
+            # Putting the short option first (reversed(...)) will make for
+            # nicer alignment.
+            case = '|'.join(reversed(a.option_strings))
+            if self.with_functions:
+                print(f"    {indent}{case}) _{self.namespace}_{a.dest}_values ;;")
+            else:
+                print(f"    {indent}{case}) ", end='')
+                if a.choices:
+                    print(f"COMPREPLY+=($(compgen -W \"{' '.join(a.choices)}\" -- \"${{cur}}\")) ;;")
+                else:
+                    print(f" : TODO ;;")
+
+        if self.subparser_action:
+            print(f"    {indent}*) COMPREPLY=($(compgen -W \"${{_{self.namespace}_subcommands[*]}} ${{_{self.namespace}_options[*]}}\" -- \"${{cur}}\")) ;;")
+        else:
+            print(f"    {indent}*) COMPREPLY=($(compgen -W \"${{_{self.namespace}_options[*]}}\" -- \"${{cur}}\")) ;;")
+
+        print(f"{indent}esac")
 
     def print_value_function_stubs(self):
         for opt in self.arg_actions:

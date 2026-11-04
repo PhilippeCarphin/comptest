@@ -7,18 +7,18 @@ import logging
 
 def get_parser():
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument("--debug", action='store_true', help="Turn on debug logging")
+    p.add_argument("--debug", "-d", action='store_true', help="Turn on debug logging")
     p.add_argument("-F", help="Config file")
     sp = p.add_subparsers()
 
     p_cook = sp.add_parser("cook", help="Cook food")
-    p_cook.add_argument("--vessel", choices=['pan', 'pot'], help="The vessel to cook in")
-    p_cook.add_argument("--temp", choices=['high', 'medium', 'low'], help="Temperature to cook at")
-    p_cook.add_argument("--bowl", choices=['large', 'small'], help="The bowl to empty into the cooking vessel")
+    p_cook.add_argument("--vessel", "-v", choices=['pan', 'pot'], help="The vessel to cook in")
+    p_cook.add_argument("--temp", "-t", choices=['high', 'medium', 'low'], help="Temperature to cook at")
+    p_cook.add_argument("--bowl", "-b", choices=['large', 'small'], help="The bowl to empty into the cooking vessel")
 
     p_prep = sp.add_parser("prep", help="Prep food")
-    p_prep.add_argument("--bowl", choices=['large', 'small'], help="The bowl to put prepped vegetables into")
-    p_prep.add_argument("--vegetable", choices=['onion', 'carrot', 'potato'], help="The vegetable to prep")
+    p_prep.add_argument("--bowl", "-b", choices=['large', 'small'], help="The bowl to put prepped vegetables into")
+    p_prep.add_argument("--vegetable", "-v", choices=['onion', 'carrot', 'potato'], help="The vegetable to prep")
 
     if os.environ.get('GENERATE_COMPLETION',''):
         import compgen
