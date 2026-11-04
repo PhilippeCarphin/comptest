@@ -159,8 +159,9 @@ class CompletionRunner:
     def get_comp(self, cmd, timeout=None):
         """ Now that I understand what bash-completion is doing with Magic Mark
         I'm gonna try it here """
-        self.bash.send(cmd + '\t')
+        self.bash.send(cmd)
         self.bash.expect_exact(cmd) # expect 'rendered_cmd' in bash-completion
+        self.bash.send("\t")
         self.bash.send(self.magic_mark)
         # Call from bash-completion in function assert_complete in
         # bash-completion:test/t/conftest.py.
