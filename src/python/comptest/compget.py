@@ -63,6 +63,7 @@ def get_args():
     p.add_argument("--init-commands", "-c", nargs="+", help="init commands (done after sourcing init files)")
     p.add_argument("--color", choices=['red', 'green', 'blue'], help="Only for testing")
     p.add_argument("--generate-completion", action='store_true', help="Generate completion for this script")
+    p.add_argument("--cut-descriptions", action='store_true', help="Cut descriptions and spaces from results")
     if 'GENERATE_COMPLETION' in os.environ:
         import compgen
         compgen.completion_from_parser(p, 'compget', ['compget'], with_descriptions=True)
@@ -112,7 +113,7 @@ def main():
         xtrace_log=args.xtrace_log
     )
 
-    results = comp.get_comp(args.cmd, timeout=1)
+    results = comp.get_comp(args.cmd, timeout=1, cut_descriptions=cut_descriptions)
 
     if args.interact:
         comp.bash.sendintr()

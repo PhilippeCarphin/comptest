@@ -17,7 +17,7 @@ def test(cmd, expected, expect_failure=False):
     if isinstance(expected, str):
         result = c.get_comp(cmd)
     else:
-        result = set(c.get_comp(cmd))
+        result = set(c.get_comp(cmd, cut_descriptions=True))
         expected = set(expected)
     global status
 
@@ -34,12 +34,12 @@ def test(cmd, expected, expect_failure=False):
         else:
             print(f"\033[32mSuccess\033[0m: {cmd}: got {result}")
 
-test('chef ', ['cook', 'prep', '-h', '--help', '--debug', '-F'])
+test('chef ', ['cook', 'prep', '-h', '--help', '--debug', '-F', '-d'])
 test('chef cook --vessel ', ['pan', 'pot'])
 test('chef cook --temp ', ['high', 'medium', 'low'])
 test('chef cook --bowl ', ['large', 'small'])
-test('chef cook ', ['-h', '--help', '--vessel', '--temp', '--bowl'])
+test('chef cook ', ['-h', '--help', '-v', '--vessel', '-t', '--temp', '-b', '--bowl'])
 test('chef prep --bowl ', ['large', 'small'])
 test('chef prep --vegetable ', ['onion', 'carrot', 'potato'])
-test('chef prep ', ['-h', '--help', '--bowl', '--vegetable'])
+test('chef prep ', ['-h', '--help', '-b', '--bowl', '-v', '--vegetable'])
 

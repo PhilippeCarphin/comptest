@@ -156,7 +156,7 @@ class CompletionRunner:
             exit_code=int(self.bash.before.strip())
             return result, (exit_code == 0)
 
-    def get_comp(self, cmd, timeout=None):
+    def get_comp(self, cmd, timeout=None, cut_descriptions=False):
         """ Now that I understand what bash-completion is doing with Magic Mark
         I'm gonna try it here """
         self.bash.send(cmd)
@@ -183,6 +183,8 @@ class CompletionRunner:
         if match_no == 0:
             logging.debug(log_msg + "multiple lines")
             results = self.bash.before.strip().splitlines()
+            if cut_descriptions:
+                results = list(map(lambda x: x.split(' ')[0], results))
         elif match_no == 1:
             logging.debug(log_msg + "no completion")
             results = None
