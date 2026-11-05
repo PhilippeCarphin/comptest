@@ -9,10 +9,16 @@ def completion_from_parser(parser: argparse.ArgumentParser, namespace: str, comm
         raise TypeError("Argument commands must be a sequence, not 'str'")
     CompletionGenerator(parser=parser, namespace=namespace, commands=commands, with_descriptions=with_descriptions, advanced=advanced).generate()
 
-def analyze(p: argparse.ArgumentParser, test=False):
+# This could be more useful if it worked with some kind of spec
+# Consider an already written completion, no python command with an argparse parser.
+# Then we run a spec through this and for each thing in the spec
+# we try the completion, and now we have a file that tests everything
+# and we can get to work modifying it and having fun.
+def analyze(p: argparse.ArgumentParser, test=False, save_test=False):
     """ Print info on the parser.  This is mainly a demonstration of how get
     info from a given parser or tests"""
     tests = []
+    bingbong = []
     base_actions = []
     subparser_action = None
     for a in p._actions:
@@ -21,17 +27,22 @@ def analyze(p: argparse.ArgumentParser, test=False):
         else:
             base_actions.append(a)
 
-    if subparser_action:
-        print(f"Toplevel options")
-        base_option_strings = []
-        for a in base_actions:
-            base_option_strings.extend(a.option_strings)
-            print(f"    {a.option_strings}: {a.help}")
+    print(f"Toplevel options")
+    base_option_strings = []
+    for a in base_actions:
+        base_option_strings.extend(a.option_strings)
+        print(f"    {a.option_strings}: {a.help}")
+        for os in a.option_strings:
+            bingbong.append((f"chef {os} ", c.get_comp(f"chef {os} ")))
+            if a.choices:
+                tests.append(f"test('chef {os} ', {a.choices})")
 
+    if subparser_action:
         subcommands = list(subparser_action.choices.keys())
         for ca in subparser_action._choices_actions:
             print(f"Subcommand {ca.dest}: {ca.help}")
 
+        bingbong.append(("chef ", c.get_comp("chef ")))
         tests.append(f"test('chef ', {[*subcommands, *base_option_strings]})")
         for subcommand, sp in subparser_action.choices.items():
             print(f"    {subcommand}")
@@ -40,12 +51,17 @@ def analyze(p: argparse.ArgumentParser, test=False):
                 print(f"        {a.option_strings}: {a.choices or ''} {a.help}")
                 arguments.extend(a.option_strings)
                 if a.choices:
+                    bingbong.append((f"chef {os} ", c.get_comp(f"chef {os} ")))
                     for os in a.option_strings:
                         tests.append(f"test('chef {subcommand} {os} ', {a.choices})")
             tests.append(f"test('chef {subcommand} ', {arguments})")
 
     for t in tests:
         print(t)
+
+    for x, y in bingbong:
+        print(f"test('{x}', {y})")
+
 
 # TODO: Never decided to handle positional arguments
 
