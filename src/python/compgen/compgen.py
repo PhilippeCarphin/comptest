@@ -50,7 +50,7 @@ def analyze(p: argparse.ArgumentParser, test=False):
 # TODO: Never decided to handle positional arguments
 
 class CompletionGenerator():
-    def __init__(self, parser, namespace, commands, with_functions=False, with_descriptions=False, advanced=False):
+    def __init__(self, parser, namespace, commands, with_functions=False, with_descriptions=False, advanced=False, parent=None):
         self.parser = parser
         self.namespace = namespace
         self.arg_actions = []
@@ -62,12 +62,13 @@ class CompletionGenerator():
         self.with_descriptions = with_descriptions
         self.advanced = advanced
         self.with_functions = with_functions
+        self.parent = parent
 
         self.get_action()
         if self.subparser_action:
             self.subgenerators = []
             for choice, sp in self.subparser_action.choices.items():
-                self.subgenerators.append(CompletionGenerator(sp, f'{self.namespace}_{choice}', []))
+                self.subgenerators.append(CompletionGenerator(sp, f'{self.namespace}_{choice}', [], with_descriptions=with_descriptions, with_functions=with_functions, advanced=advanced, parent=self))
 
     def get_action(self):
         for a in self.parser._actions:
@@ -112,11 +113,12 @@ class CompletionGenerator():
             _{self.namespace}_options=("${{_{self.namespace}_arg_options[@]}}" "${{_{self.namespace}_flag_options[@]}}")"""))
         if self.subparser_action:
             print(f"_{self.namespace}_subcommands=({' '.join(self.subparser_action.choices.keys())})")
-            for subgen in self.subgenerators:
-                subgen.print_arrays()
-
         if self.with_descriptions:
             self.print_description_array()
+
+        if self.subparser_action:
+            for subgen in self.subgenerators:
+                subgen.print_arrays()
 
     def print_main_function(self):
         print(f"_{self.namespace}(){{", end='')
@@ -132,15 +134,14 @@ class CompletionGenerator():
             sc_indent = '        '
 
         self.option_case_statement(indent=sc_indent)
+        if self.with_descriptions and not self.parent:
+            print(f"\n{sc_indent}_{self.namespace}_add_descriptions_by_ref _{self.namespace}_descriptions")
 
         if self.subparser_action:
             print("    else")
             print(f"        _{self.namespace}_${{subcommand}}")
+            print(f"        _{self.namespace}_add_descriptions_by_ref _{self.namespace}_${{subcommand}}_descriptions")
             print("    fi")
-
-
-        if self.with_descriptions:
-            print(f"\n    _{self.namespace}_add_descriptions")
 
         print("}\n")
 
@@ -207,17 +208,18 @@ class CompletionGenerator():
         print("}")
 
     def print_description_adder(self):
-        print(textwrap.dedent(f"""
-            _{self.namespace}_add_descriptions(){{
+        print(f"_{self.namespace}_add_descriptions_by_ref(){{")
+        print(textwrap.indent(textwrap.dedent("""
+                local -n _descriptions=$1
 
-                if (( ${{#COMPREPLY[@]}} <= 1 )) ; then
+                if (( ${#COMPREPLY[@]} <= 1 )) ; then
                     return
                 fi
 
                 local max_comp=0
-                for c in "${{COMPREPLY[@]}}" ; do
-                    if ((${{#c}} > max_comp)) ; then
-                        max_comp=${{#c}}
+                for c in "${COMPREPLY[@]}" ; do
+                    if ((${#c} > max_comp)) ; then
+                        max_comp=${#c}
                     fi
                 done
 
@@ -226,32 +228,29 @@ class CompletionGenerator():
                     return 1
                 fi
 
-                for((i=0;i<${{#COMPREPLY[@]}};i++));do
-                    local comp=${{COMPREPLY[i]}}
-                    local desc=${{_{self.namespace}_descriptions[$comp]}}
+                for((i=0;i<${#COMPREPLY[@]};i++));do
+                    local comp=${COMPREPLY[i]}
+                    local desc=${_descriptions[$comp]}
 
-                    if [[ -z ${{desc}} ]] ; then
+                    if [[ -z ${desc} ]] ; then
                         continue
                     fi
-                    if ((${{#desc}} > max_desc_len)) ; then
-                        desc=${{desc:0:$((max_desc_len-1))}}
+                    if ((${#desc} > max_desc_len)) ; then
+                        desc=${desc:0:$((max_desc_len-1))}
                         desc+='…'
                     fi
-                    printf -v COMPREPLY[i] "%-${{max_comp}}s (%s)" "${{comp}}" "${{desc}}"
+                    printf -v COMPREPLY[i] "%-${max_comp}s (%s)" "${comp}" "${desc}"
                 done
-            }}
-            """))
+            """), '    '))
+        print("}")
 
 
     def print_description_array(self):
         print(f"declare -gA _{self.namespace}_descriptions=(")
         self.print_description_array_elements(self.parser)
-        print(self.subparser_action, file=sys.stderr)
         if self.subparser_action:
             for ca in self.subparser_action._choices_actions:
                 print(f"    [{ca.dest}]=\"subcommand: {ca.help}\"")
-            for subcommand, sp in self.subparser_action.choices.items():
-                self.print_description_array_elements(sp)
         print(")")
 
     def print_description_array_elements(self, p):
