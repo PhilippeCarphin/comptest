@@ -1,7 +1,7 @@
 #!/usr/bin/env bash # hint for editors
 
 _compget_arg_options=(--init-files -f --bash-command -d --log-file --xtrace-log --init-commands -c --color)
-_compget_flag_options=(-h --help --debug --load-bash-completion -l -x --verbose-ps4 --interact --generate-completion)
+_compget_flag_options=(-h --help --debug --load-bash-completion -l -x --verbose-ps4 --interact --generate-completion --cut-descriptions)
 _compget_options=("${_compget_arg_options[@]}" "${_compget_flag_options[@]}")
 declare -gA _compget_descriptions=(
     [-h]=" - : show this help message and exit"
@@ -22,6 +22,7 @@ declare -gA _compget_descriptions=(
     [-c]="arg: init commands (done after sourcing init files)"
     [--color]="arg: Only for testing"
     [--generate-completion]="flag: Generate completion for this script"
+    [--cut-descriptions]="flag: Cut descriptions and spaces from results"
 )
 
 _compget(){
@@ -39,11 +40,12 @@ _compget(){
         *) COMPREPLY=($(compgen -W "${_compget_options[*]}" -- "${cur}")) ;;
     esac
 
-    _compget_add_descriptions
+    _compget_add_descriptions_by_ref _compget_descriptions
 }
 
+_compget_add_descriptions_by_ref(){
 
-_compget_add_descriptions(){
+    local -n _descriptions=$1
 
     if (( ${#COMPREPLY[@]} <= 1 )) ; then
         return
@@ -63,7 +65,7 @@ _compget_add_descriptions(){
 
     for((i=0;i<${#COMPREPLY[@]};i++));do
         local comp=${COMPREPLY[i]}
-        local desc=${_compget_descriptions[$comp]}
+        local desc=${_descriptions[$comp]}
 
         if [[ -z ${desc} ]] ; then
             continue
@@ -74,6 +76,6 @@ _compget_add_descriptions(){
         fi
         printf -v COMPREPLY[i] "%-${max_comp}s (%s)" "${comp}" "${desc}"
     done
-}
 
+}
 complete -F _compget compget
