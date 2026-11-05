@@ -86,7 +86,6 @@ class CompletionGenerator():
                 print(f"Unhandled type {type(a)}", file=sys.stderr)
 
     def generate(self):
-        print(f"Main PARSER: {self.parser}", file=sys.stderr)
         print("#!/usr/bin/env bash # hint for editors")
         self.print_arrays()
         print()
@@ -96,7 +95,6 @@ class CompletionGenerator():
                 subgen.print_main_function()
         if self.with_descriptions:
             self.print_description_adder()
-        # self.print_generic_options()
         if self.with_functions:
             self.print_value_function_stubs()
             for subgen in self.subgenerators:
