@@ -33,6 +33,12 @@ salad_compget = bin/compget --load-bash-completion --init-files examples/salad/_
 examples/chef/_chef_generated: examples/chef/chef.py
 	$(pythonpath) GENERATE_COMPLETION=1 \
 		python3 examples/chef/chef.py > examples/chef/_chef_generated
+
+.PHONY: test-chef-analyze
+test-chef-analyze:
+	$(pythonpath) COMPLETION_ANALYSIS=1 \
+		python3 examples/chef/chef.py
+
 test-chef-generated: examples/chef/_chef_generated
 	$(pythonpath) python3 examples/chef/test-chef.py --generated
 test-chef:
