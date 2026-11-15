@@ -113,7 +113,7 @@ def main():
         xtrace_log=args.xtrace_log
     )
 
-    results = comp.get_comp(args.cmd, timeout=1, cut_descriptions=cut_descriptions)
+    results = comp.get_comp(args.cmd, timeout=1, cut_descriptions=args.cut_descriptions)
 
     if args.interact:
         comp.bash.sendintr()
