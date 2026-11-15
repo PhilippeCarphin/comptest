@@ -7,7 +7,7 @@ import sys
 def completion_from_parser(parser: argparse.ArgumentParser, namespace: str, commands: list[str], with_functions=True, with_descriptions=False, advanced=False):
     if isinstance(commands, str):
         raise TypeError("Argument commands must be a sequence, not 'str'")
-    CompletionGenerator(parser=parser, namespace=namespace, commands=commands, with_descriptions=with_descriptions, advanced=advanced).generate()
+    CompletionGenerator(parser=parser, namespace=namespace, commands=commands, with_functions=with_functions, with_descriptions=with_descriptions, advanced=advanced).generate()
 
 def analyze(p: argparse.ArgumentParser, test=False):
     """ Print info on the parser.  This is mainly a demonstration of how get
@@ -57,7 +57,7 @@ class CompletionGenerator():
         self.flag_actions = []
         self.posarg_actions = []
         self.subparser_action = None
-        self.subgenerartors = None
+        self.subgenerators = None
         self.commands = commands
         self.with_descriptions = with_descriptions
         self.advanced = advanced
@@ -68,7 +68,16 @@ class CompletionGenerator():
         if self.subparser_action:
             self.subgenerators = []
             for choice, sp in self.subparser_action.choices.items():
-                self.subgenerators.append(CompletionGenerator(sp, f'{self.namespace}_{choice}', [], with_descriptions=with_descriptions, with_functions=with_functions, advanced=advanced, parent=self))
+                id_choice = choice.replace('-','_')
+                self.subgenerators.append(CompletionGenerator(
+                    parser=sp,
+                    namespace=f'{self.namespace}_{id_choice}',
+                    commands=[],
+                    with_descriptions=with_descriptions,
+                    with_functions=with_functions,
+                    advanced=advanced,
+                    parent=self)
+                )
 
     def get_action(self):
         for a in self.parser._actions:
@@ -97,8 +106,9 @@ class CompletionGenerator():
             self.print_description_adder()
         if self.with_functions:
             self.print_value_function_stubs()
-            for subgen in self.subgenerators:
-                subgen.print_value_function_stubs()
+            if self.subgenerators:
+                for subgen in self.subgenerators:
+                    subgen.print_value_function_stubs()
         if self.advanced:
             self.print_get_completed_option()
         if self.commands:
