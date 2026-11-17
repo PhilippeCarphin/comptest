@@ -3,7 +3,7 @@ import os
 
 def get_args():
 
-    p = argparse.ArgumentParser()
+    p = argparse.ArgumentParser(prog='salad')
 
     p.add_argument('--dressing', '-d', choices=['italian', 'ranch'])
     p.add_argument('--seasoning', '-s', nargs='+', choices=['salt', 'pepper'])

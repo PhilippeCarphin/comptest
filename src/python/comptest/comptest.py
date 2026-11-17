@@ -85,6 +85,8 @@ class CompletionRunner:
             logfile=open(logfile,'a') if logfile else None
         )
 
+        self._setup_readline()
+
         if xtrace or xtrace_log:
             if init_commands is None:
                 init_commands = []
@@ -114,9 +116,6 @@ class CompletionRunner:
             self.bash.sendline(f"unset PROMPT_COMMAND")
             self.bash.sendline(f"PS1={self.PS1}")
             self.bash.expect_exact(f"PS1={self.PS1}\r\n{self.PS1}")
-
-
-        self._setup_readline()
 
     def close(self):
         # When running this with a command that only produces one

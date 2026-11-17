@@ -4,7 +4,7 @@ compget_functions=share/bash-completion/completions/compget_functions.bash
 compfile=share/bash-completion/completions/compget
 pythonpath = PYTHONPATH=$(PWD)/src/python
 
-all: test-chef-generated
+all: new
 
 install-dev: compfile
 	python3 -m pip install -e .
@@ -20,6 +20,7 @@ uninstall:
 	python3 -m pip uninstall comptest
 	rm -f $(PREFIX)/$(compfile)
 
+
 # The file is tracked
 compfile: $(compfile)
 $(compfile): src/python/compgen/compgen.py $(compget_functions)
@@ -28,33 +29,21 @@ $(compfile): src/python/compgen/compgen.py $(compget_functions)
 	cat $@_base $(compget_functions) > $@
 	rm $@_base
 
-examples/salad/_salad:
-	$(pythonpath) GENERATE_COMPLETION=1 \
-	    python3 examples/salad/salad.py >$@
-salad_compget = bin/compget --load-bash-completion --init-files examples/salad/_salad --
+#
+# Testing and demos
+#
+examples/%/generated_comp.bash: examples/%/cmd.py
+	GENERATE_COMPLETION=1 python3 $< >$@
 
-.PHONY: examples/chef/_chef_generated
-examples/chef/_chef_generated: examples/chef/chef.py
-	$(pythonpath) GENERATE_COMPLETION=1 \
-		python3 examples/chef/chef.py > examples/chef/_chef_generated
+test-%: examples/%/test.py examples/%/generated_comp.bash
+	python3 $<
 
-.PHONY: test-chef-analyze
-test-chef-analyze:
-	$(pythonpath) COMPLETION_ANALYSIS=1 \
-		python3 examples/chef/chef.py
+analyze-%: examples/%/cmd.py
+	COMPLETION_ANALYSIS=1 python3 $<
 
-test-chef-generated: examples/chef/_chef_generated
-	$(pythonpath) python3 examples/chef/test-chef.py --generated
-test-chef:
-	$(pythonpath) python3 examples/chef/test-chef.py
+demo-%: examples/%/generated_comp.bash
+	bin/compget --load-bash-completion --init-files $< -- '$* '
 
-demo-compgen: examples/salad/_salad
-
-demo-compget: examples/salad/_salad
-	$(salad_compget) 'salad --vegetable '
-	$(salad_compget) 'salad '
-demo-comptest: examples/salad/_salad
-	python3 examples/salad/test-salad-comp.py
 
 # TODO: Investigate why --load-bash-completion makes a difference.  It looks
 # like there is only a difference when colons are involved. And does it depend

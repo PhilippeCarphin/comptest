@@ -1,0 +1,143 @@
+#!/usr/bin/env bash # hint for editors
+
+_compget_arg_options=(--init-files -f --bash-command -d --log-file --xtrace-log --init-commands -c --color)
+_compget_flag_options=(-h --help --debug --load-bash-completion -l -x --verbose-ps4 --interact --generate-completion --cut-descriptions)
+_compget_options=("${_compget_arg_options[@]}" "${_compget_flag_options[@]}")
+declare -gA _compget_descriptions=(
+    [-h]=" - : show this help message and exit"
+    [--help]=" - : show this help message and exit"
+    [--init-files]="arg: Files to source before attempting completion"
+    [-f]="arg: Files to source before attempting completion"
+    [--bash-command]="arg: Bash command (default 'bash --norc')"
+    [-d]="arg: Working directory to be in"
+    [--debug]="flag: Set log level to DEBUG"
+    [--load-bash-completion]="flag: Load BASH completion from likely directories"
+    [-l]="flag: Load BASH completion from likely directories"
+    [--log-file]="arg: Log file"
+    [--xtrace-log]="arg: Log file for xtrace output"
+    [-x]="flag: Activate xtrace (set -x)"
+    [--verbose-ps4]="flag: Set verbose PS4.  Only useful if -x option is used"
+    [--interact]="flag: Take control of the shell after getting completions"
+    [--init-commands]="arg: init commands (done after sourcing init files)"
+    [-c]="arg: init commands (done after sourcing init files)"
+    [--color]="arg: Only for testing"
+    [--generate-completion]="flag: Generate completion for this script"
+    [--cut-descriptions]="flag: Cut descriptions and spaces from results"
+)
+
+_compget(){
+    local cur prev words cword
+    _init_completion || return
+
+    local opt=$(_compget_get_completed_option)
+    case $opt in
+        -f|--init-files) _compget_init_files_values ;;
+        --bash-command) _compget_bash_command_values ;;
+        -d) _compget_d_values ;;
+        --log-file) _compget_log_file_values ;;
+        --xtrace-log) _compget_xtrace_log_values ;;
+        -c|--init-commands) _compget_init_commands_values ;;
+        --color) _compget_color_values ;;
+        *) COMPREPLY=($(compgen -W "${_compget_options[*]}" -- "${cur}")) ;;
+    esac
+
+    _compget_add_descriptions_by_ref _compget_descriptions
+}
+
+_compget_add_descriptions_by_ref(){
+
+    local -n _descriptions=$1
+
+    if (( ${#COMPREPLY[@]} <= 1 )) ; then
+        return
+    fi
+
+    local max_comp=0
+    for c in "${COMPREPLY[@]}" ; do
+        if ((${#c} > max_comp)) ; then
+            max_comp=${#c}
+        fi
+    done
+
+    local i max_desc_len=$((COLUMNS - max_comp - 4))
+    if ((max_desc_len < 10 )) ; then
+        return 1
+    fi
+
+    for((i=0;i<${#COMPREPLY[@]};i++));do
+        local comp=${COMPREPLY[i]}
+        local desc=${_descriptions[$comp]}
+
+        if [[ -z ${desc} ]] ; then
+            continue
+        fi
+        if ((${#desc} > max_desc_len)) ; then
+            desc=${desc:0:$((max_desc_len-1))}
+            desc+='…'
+        fi
+        printf -v COMPREPLY[i] "%-${max_comp}s (%s)" "${comp}" "${desc}"
+    done
+
+}
+_compget_init_files_values(){
+    _filedir
+}
+
+_compget_bash_command_values(){
+    : TODO
+}
+
+_compget_d_values(){
+    : TODO
+}
+
+_compget_log_file_values(){
+    : TODO
+}
+
+_compget_xtrace_log_values(){
+    : TODO
+}
+
+_compget_init_commands_values(){
+    : TODO
+}
+
+_compget_color_values(){
+    COMPREPLY=($(compgen -W 'red green blue' -- "${cur}"))
+}
+
+_compget_get_completed_option(){
+    case ${prev} in
+        --bash-command) echo --bash-command ; return ;;
+        -d) echo -d ; return ;;
+        --log-file) echo --log-file ; return ;;
+        --xtrace-log) echo --xtrace-log ; return ;;
+    esac
+
+    for ((i=0;i<${#words[@]};i++)) ; do
+        case ${words[cword-i]} in
+            --init-files|-f) echo "--init-files" ; return ;;
+            -*) break 2 ;;
+        esac
+    done
+
+    for ((i=0;i<${#words[@]};i++)) ; do
+        case ${words[cword-i]} in
+            --init-commands|-c) echo "--init-commands" ; return ;;
+            -*) break 2 ;;
+        esac
+    done
+
+    for ((i=0; i<=3 && i<${#words[@]} ;i++)) ; do
+        case ${words[cword-i]} in
+            --color) echo "--color" ; return ;;
+            -*) break 2 ;;
+        esac
+    done
+}
+complete -F _compget compget
+_compget_d_values(){
+    : TODO
+}
+
