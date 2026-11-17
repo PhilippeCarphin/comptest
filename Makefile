@@ -1,5 +1,6 @@
 PREFIX ?= $(HOME)/.local
 
+compget_functions=share/bash-completion/completions/compget_functions.bash
 compfile=share/bash-completion/completions/compget
 pythonpath = PYTHONPATH=$(PWD)/src/python
 
@@ -20,9 +21,12 @@ uninstall:
 	rm -f $(PREFIX)/$(compfile)
 
 # The file is tracked
-compfile:
+compfile: $(compfile)
+$(compfile): src/python/compgen/compgen.py $(compget_functions)
 	$(pythonpath) GENERATE_COMPLETION=1 \
-	    python3 -c "import comptest.compget; comptest.compget.main()" > $(compfile)
+	    python3 -c "import comptest.compget; comptest.compget.main()" > $@_base
+	cat $@_base $(compget_functions) > $@
+	rm $@_base
 
 examples/salad/_salad:
 	$(pythonpath) GENERATE_COMPLETION=1 \

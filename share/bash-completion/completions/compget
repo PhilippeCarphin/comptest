@@ -4,39 +4,40 @@ _compget_arg_options=(--init-files -f --bash-command -d --log-file --xtrace-log 
 _compget_flag_options=(-h --help --debug --load-bash-completion -l -x --verbose-ps4 --interact --generate-completion --cut-descriptions)
 _compget_options=("${_compget_arg_options[@]}" "${_compget_flag_options[@]}")
 declare -gA _compget_descriptions=(
-    [-h]=" - : show this help message and exit"
-    [--help]=" - : show this help message and exit"
-    [--init-files]="arg: Files to source before attempting completion"
-    [-f]="arg: Files to source before attempting completion"
-    [--bash-command]="arg: Bash command (default 'bash --norc')"
-    [-d]="arg: Working directory to be in"
-    [--debug]="flag: Set log level to DEBUG"
-    [--load-bash-completion]="flag: Load BASH completion from likely directories"
-    [-l]="flag: Load BASH completion from likely directories"
-    [--log-file]="arg: Log file"
-    [--xtrace-log]="arg: Log file for xtrace output"
-    [-x]="flag: Activate xtrace (set -x)"
-    [--verbose-ps4]="flag: Set verbose PS4.  Only useful if -x option is used"
-    [--interact]="flag: Take control of the shell after getting completions"
-    [--init-commands]="arg: init commands (done after sourcing init files)"
-    [-c]="arg: init commands (done after sourcing init files)"
-    [--color]="arg: Only for testing"
-    [--generate-completion]="flag: Generate completion for this script"
-    [--cut-descriptions]="flag: Cut descriptions and spaces from results"
+    [-h]="show this help message and exit"
+    [--help]="show this help message and exit"
+    [--init-files]="Files to source before attempting completion"
+    [-f]="Files to source before attempting completion"
+    [--bash-command]="Bash command (default 'bash --norc')"
+    [-d]="Working directory to be in"
+    [--debug]="Set log level to DEBUG"
+    [--load-bash-completion]="Load BASH completion from likely directories"
+    [-l]="Load BASH completion from likely directories"
+    [--log-file]="Log file"
+    [--xtrace-log]="Log file for xtrace output"
+    [-x]="Activate xtrace (set -x)"
+    [--verbose-ps4]="Set verbose PS4.  Only useful if -x option is used"
+    [--interact]="Take control of the shell after getting completions"
+    [--init-commands]="init commands (done after sourcing init files)"
+    [-c]="init commands (done after sourcing init files)"
+    [--color]="Only for testing"
+    [--generate-completion]="Generate completion for this script"
+    [--cut-descriptions]="Cut descriptions and spaces from results"
 )
 
 _compget(){
     local cur prev words cword
     _init_completion || return
 
-    case $prev in
-        -f|--init-files)  : TODO ;;
-        --bash-command)  : TODO ;;
-        -d)  : TODO ;;
-        --log-file)  : TODO ;;
-        --xtrace-log)  : TODO ;;
-        -c|--init-commands)  : TODO ;;
-        --color) COMPREPLY+=($(compgen -W "red green blue" -- "${cur}")) ;;
+    local opt=$(_compget_get_completed_option)
+    case $opt in
+        -f|--init-files) _compget_init_files_values ;;
+        --bash-command) _compget_bash_command_values ;;
+        -d) _compget_d_values ;;
+        --log-file) _compget_log_file_values ;;
+        --xtrace-log) _compget_xtrace_log_values ;;
+        -c|--init-commands) _compget_init_commands_values ;;
+        --color) _compget_color_values ;;
         *) COMPREPLY=($(compgen -W "${_compget_options[*]}" -- "${cur}")) ;;
     esac
 
@@ -78,4 +79,65 @@ _compget_add_descriptions_by_ref(){
     done
 
 }
+_compget_init_files_values(){
+    _filedir
+}
+
+_compget_bash_command_values(){
+    : TODO
+}
+
+_compget_d_values(){
+    : TODO
+}
+
+_compget_log_file_values(){
+    : TODO
+}
+
+_compget_xtrace_log_values(){
+    : TODO
+}
+
+_compget_init_commands_values(){
+    : TODO
+}
+
+_compget_color_values(){
+    COMPREPLY=($(compgen -W 'red green blue' -- "${cur}"))
+}
+
+
+# First check if ${prev} is an option that takes exactly one argument, then
+# starting from the end, read backwards.  If word[cword-i] is an option that
+# can take $i or more args, then that is the option we are completing.  However
+# as soon as we encounter an argument that starts with '-' that is not one
+# of these options, everything stops.  This is how argparse works also.
+#
+# It is technically possible to have aguments.
+# - Choice arguments with choices that start with '-',
+# - Using the --opt=-value
+# The --opt=value syntax is not handled by the compgen generator
+# and choices starting with '-' are also not handled.
+_compget_get_completed_option(){
+    case ${prev} in
+        --bash-command) echo "${prev}" ; return ;;
+        -d) echo "${prev}" ; return ;;
+        --log-file) echo "${prev}" ; return ;;
+        --xtrace-log) echo "${prev}" ; return ;;
+    esac
+    for((i=0;i<${#words[@]};i++)) ; do
+        local word=${words[cword-i]}
+        case ${word} in
+            --init-files|-f|--init-commands|-c) echo "${word}" ; return ;;
+            --color) if ((i<=3)) ; then echo "${word}" ; return ; fi ;;
+            -*) break ;;
+        esac
+    done
+}
 complete -F _compget compget
+
+_compget_d_values(){
+    _filedir -d
+}
+
