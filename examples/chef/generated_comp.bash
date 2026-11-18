@@ -41,7 +41,7 @@ declare -gA _chef_prep_descriptions=(
 )
 
 _chef(){
-    local cur prev words cword
+    local cur prev words cword completed_option posarg_number=0
     _init_completion || return
 
     local subcommand subcommand_index=${subcommand_index:-0}
@@ -54,8 +54,8 @@ _chef(){
     done
 
     if [[ -z ${subcommand} ]] ; then
-        local opt=$(_chef_get_completed_option)
-        case $opt in
+        _chef_get_completed_option
+        case $completed_option in
             -F)  : TODO ;;
             *) COMPREPLY=($(compgen -W "${_chef_subcommands[*]} ${_chef_options[*]}" -- "${cur}")) ;;
         esac
@@ -68,26 +68,26 @@ _chef(){
 }
 
 _chef_cook(){
-    local cur prev words cword
+    local cur prev words cword completed_option posarg_number=0
     _init_completion || return
 
     case $prev in
         -v|--vessel) COMPREPLY+=($(compgen -W "pan pot" -- "${cur}")) ;;
         -t|--temp) COMPREPLY+=($(compgen -W "high medium low" -- "${cur}")) ;;
         -b|--bowl) COMPREPLY+=($(compgen -W "large small" -- "${cur}")) ;;
-        *) COMPREPLY=($(compgen -W "${_chef_cook_options[*]}" -- "${cur}")) ;;
+        *) COMPREPLY=($(compgen -W "${_chef_cook_subcommands[*]} ${_chef_cook_options[*]}" -- "${cur}")) ;;
     esac
 }
 
 _chef_prep(){
-    local cur prev words cword
+    local cur prev words cword completed_option posarg_number=0
     _init_completion || return
 
-    local opt=$(_chef_prep_get_completed_option)
-    case $opt in
+    _chef_prep_get_completed_option
+    case $completed_option in
         -b|--bowl) COMPREPLY+=($(compgen -W "large small" -- "${cur}")) ;;
         -v|--vegetable) COMPREPLY+=($(compgen -W "onion carrot potato" -- "${cur}")) ;;
-        *) COMPREPLY=($(compgen -W "${_chef_prep_options[*]}" -- "${cur}")) ;;
+        *) COMPREPLY=($(compgen -W "${_chef_prep_subcommands[*]} ${_chef_prep_options[*]}" -- "${cur}")) ;;
     esac
 }
 
@@ -138,12 +138,23 @@ _chef_add_descriptions_by_ref(){
 # - Using the --opt=-value
 # but these possibilities are not handled.
 _chef_get_completed_option(){
-    for((i=0;i<${#words[@]};i++)) ; do
-        local word=${words[cword-i]}
+    for((i=subcommand_index+1;i<cword;i++)) ; do
+        local nargs=0 type=''
+        local word=${words[i]}
         case ${word} in
-            -F) if ((i<=2)) ; then echo "${word}" ; return ; fi ;;
-            -*) break ;;
+            -h|--help|--debug|-d) : nargs=0 ;;
+            -F) nargs=2 ;;
+            *) ((posarg_number++)) ;;
         esac
+        for((x=1;x<=nargs;x++)) ; do
+            if ((i+x >= cword)) ; then
+                completed_option=${word}
+                return
+            elif [[ ${type} == '*' ]] && [[ ${words[i+x]} == -* ]] ; then
+                break
+            fi
+        done
+        i=$((i+x-1))
     done
 }
 
@@ -158,15 +169,24 @@ _chef_get_completed_option(){
 # - Using the --opt=-value
 # but these possibilities are not handled.
 _chef_prep_get_completed_option(){
-    case ${prev} in
-        -v|--vegetable) echo "${prev}" ; return ;;
-    esac
-    for((i=0;i<${#words[@]}-${subcommand_index};i++)) ; do
-        local word=${words[cword-i]}
+    for((i=subcommand_index+1;i<cword;i++)) ; do
+        local nargs=0 type=''
+        local word=${words[i]}
         case ${word} in
-            --bowl|-b) echo "${word}" ; return ;;
-            -*) break ;;
+            -h|--help) : nargs=0 ;;
+            --vegetable|-v) nargs=1 ;;
+            --bowl|-b) nargs=${cword} ; type='*' ;;
+            *) ((posarg_number++)) ;;
         esac
+        for((x=1;x<=nargs;x++)) ; do
+            if ((i+x >= cword)) ; then
+                completed_option=${word}
+                return
+            elif [[ ${type} == '*' ]] && [[ ${words[i+x]} == -* ]] ; then
+                break
+            fi
+        done
+        i=$((i+x-1))
     done
 }
 complete -F _chef chef

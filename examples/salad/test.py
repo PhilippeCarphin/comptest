@@ -1,41 +1,25 @@
 
 import comptest
+import os
+import sys
+
 bash_comp = comptest.find_bash_completion()
-c = comptest.CompletionRunner(init_files=["examples/salad/_salad", bash_comp])
-status = 0
-def test(cmd, expected, expect_failure=False):
-    if isinstance(expected, str):
-        result = c.get_comp(cmd)
-    else:
-        result = set(c.get_comp(cmd))
-        expected = set(expected)
-    global status
+try:
+    c = comptest.CompletionRunner(
+        init_files=[bash_comp, sys.argv[1]],
+    )
+except RuntimeError as e:
+    print(f"FAILURE: Init: {e}")
+    raise SystemExit(1) from e
 
-    if expect_failure:
-        if result == expected:
-            print(f"\033[31mFailure\033[0m: {cmd}: Expecting failure but result == expected")
-            status = 1
-        else:
-            print(f"\033[32mSuccess\033[0m: {cmd}: Results diffrent from expected")
-    else:
-        if result != expected:
-            print(f"\033[31mFailure\033[0m: {cmd}: expected {expected}, got {result}.")
-            status = 1
-        else:
-            print(f"\033[32mSuccess\033[0m: {cmd}: got {result}")
+c.test('salad ', ['-h', '--help', '--dressing', '-d', '--seasoning', '-s', '--vegetable', '-v', '--fruit', '-f'])
+c.test('salad --dressing ', ['italian', 'ranch'])
+c.test('salad -d ', ['italian', 'ranch'])
+c.test('salad --seasoning ', ['salt', 'pepper'])
+c.test('salad -s ', ['salt', 'pepper'])
+c.test('salad --vegetable ', ['celery', 'carrot', 'broccoli', 'potato'])
+c.test('salad -v ', ['celery', 'carrot', 'broccoli', 'potato'])
+c.test('salad --fruit ', ['apple', 'apricot', 'banana', 'cherry'])
+c.test('salad -f ', ['apple', 'apricot', 'banana', 'cherry'])
 
-fruits = ['apple', 'apricot', 'banana', 'cherry']
-veggies = ['celery', 'broccoli', 'carrot', 'potato']
-
-test('salad --fruit ', fruits)
-test('salad --fruit apple ', fruits)
-test('salad --fruit apple banana ', fruits)
-test('salad --fruit apple banana cherry ', fruits, expect_failure=True)
-test('salad --fruit apple -- banana cherry ', fruits, expect_failure=True)
-
-test('salad --vegetable ', veggies)
-test('salad --vegetable potato carrot carrot potato carrot carrot carrot ', veggies)
-
-test('salad --fruit a', ['apple', 'apricot'])
-test('salad --fruit b', 'anana ')
-
+sys.exit(1 if c.has_failed_tests else 0)

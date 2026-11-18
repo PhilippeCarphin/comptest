@@ -1,5 +1,6 @@
 import argparse
 import os
+import sys
 
 def get_args():
 
@@ -13,6 +14,12 @@ def get_args():
     if os.environ.get('GENERATE_COMPLETION', ''):
         import compgen
         compgen.completion_from_parser(p, namespace='salad', commands=['salad'], advanced=True)
+        sys.exit(0)
+
+    if os.environ.get('COMPLETION_ANALYSIS', ''):
+        import compgen
+        compgen.analyze(p)
+        sys.exit(0)
 
     return p.parse_args()
 

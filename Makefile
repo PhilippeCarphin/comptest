@@ -32,6 +32,7 @@ $(compfile): src/python/compgen/compgen.py $(compget_functions)
 #
 # Testing and demos
 #
+x: examples/git/generated_comp.bash examples/salad/generated_comp.bash examples/chef/generated_comp.bash
 examples/%/generated_comp.bash: examples/%/cmd.py src/python/compgen/compgen.py
 	GENERATE_COMPLETION=1 python3 $< >$@
 

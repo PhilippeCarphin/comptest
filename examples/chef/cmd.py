@@ -28,6 +28,7 @@ def get_parser():
     if os.environ.get('COMPLETION_ANALYSIS', ''):
         import compgen
         compgen.analyze(p)
+        sys.exit(0)
 
     return p
 

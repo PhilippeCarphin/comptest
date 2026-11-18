@@ -1,58 +1,30 @@
+
 import comptest
 import os
-import argparse
-p = argparse.ArgumentParser()
-p.add_argument("--generated", action='store_true')
-args = p.parse_args()
-
-this_dir = os.path.dirname(__file__)
+import sys
 
 bash_comp = comptest.find_bash_completion()
-init_file_basename = "_chef" if not args.generated else "_chef_generated"
-c = comptest.CompletionRunner(
-    init_files=[bash_comp, os.path.join(this_dir, init_file_basename)]
-)
+try:
+    c = comptest.CompletionRunner(
+        init_files=[bash_comp, sys.argv[1]],
+    )
+except RuntimeError as e:
+    print(f"FAILURE: Init: {e}")
+    raise SystemExit(1) from e
 
-def test(cmd, expected, expect_failure=False):
-    if isinstance(expected, str):
-        result = c.get_comp(cmd)
-    else:
-        result = set(c.get_comp(cmd, cut_descriptions=True))
-        expected = set(expected)
-    global status
+c.test('chef ', ['cook', 'prep', '-h', '--help', '--debug', '-d', '-F'])
+c.test('chef cook ', ['-h', '--help', '--vessel', '-v', '--temp', '-t', '--bowl', '-b'])
+c.test('chef cook --vessel ', ['pan', 'pot'])
+c.test('chef cook -v ', ['pan', 'pot'])
+c.test('chef cook --temp ', ['high', 'medium', 'low'])
+c.test('chef cook -t ', ['high', 'medium', 'low'])
+c.test('chef cook --bowl ', ['large', 'small'])
+c.test('chef cook -b ', ['large', 'small'])
+c.test('chef prep ', ['-h', '--help', '--bowl', '-b', '--vegetable', '-v'])
+c.test('chef prep --bowl ', ['large', 'small'])
+c.test('chef prep -b ', ['large', 'small'])
+c.test('chef prep --vegetable ', ['onion', 'carrot', 'potato'])
+c.test('chef prep -v ', ['onion', 'carrot', 'potato'])
 
-    if expect_failure:
-        if result == expected:
-            print(f"\033[31mFailure\033[0m: {cmd}: Expecting failure but result == expected")
-            status = 1
-        else:
-            print(f"\033[32mSuccess\033[0m: {cmd}: Results diffrent from expected")
-    else:
-        if result != expected:
-            print(f"\033[31mFailure\033[0m: {cmd}: expected {expected}, got {result}.")
-            status = 1
-        else:
-            print(f"\033[32mSuccess\033[0m: {cmd}: got {result}")
-
-# test('chef ', ['cook', 'prep', '-h', '--help', '--debug', '-F', '-d'])
-# test('chef cook --vessel ', ['pan', 'pot'])
-# test('chef cook --temp ', ['high', 'medium', 'low'])
-# test('chef cook --bowl ', ['large', 'small'])
-# test('chef cook ', ['-h', '--help', '-v', '--vessel', '-t', '--temp', '-b', '--bowl'])
-# test('chef prep --bowl ', ['large', 'small'])
-# test('chef prep --vegetable ', ['onion', 'carrot', 'potato'])
-# test('chef prep ', ['-h', '--help', '-b', '--bowl', '-v', '--vegetable'])
-
-test('chef ', ['cook', 'prep', '-h', '--help', '--debug', '-d', '-F'])
-test('chef cook ', ['-h', '--help', '--vessel', '-v', '--temp', '-t', '--bowl', '-b'])
-test('chef cook --vessel ', ['pan', 'pot'])
-test('chef cook -v ', ['pan', 'pot'])
-test('chef cook --temp ', ['high', 'medium', 'low'])
-test('chef cook -t ', ['high', 'medium', 'low'])
-test('chef cook --bowl ', ['large', 'small'])
-test('chef cook -b ', ['large', 'small'])
-test('chef prep ', ['-h', '--help', '--bowl', '-b', '--vegetable', '-v'])
-test('chef prep --bowl ', ['large', 'small'])
-test('chef prep -b ', ['large', 'small'])
-test('chef prep --vegetable ', ['onion', 'carrot', 'potato'])
-test('chef prep -v ', ['onion', 'carrot', 'potato'])
+sys.exit(1 if c.has_failed_tests else 0)
+Namespace(debug=False, F=None)
