@@ -60,6 +60,7 @@ class CompletionRunner:
     Test completions for a command.
     """
     def __init__(self, PS1="@/", PS4=None, xtrace=False, xtrace_log=None, directory=None, init_files=None, init_commands=None, logfile=None, bash_command=None, magic_mark="YAYBOOYAYBOO"):
+        self.has_failed_tests = False
         self.PS1 = PS1
         self.PS4 = PS4
         self.magic_mark = magic_mark
@@ -201,6 +202,44 @@ class CompletionRunner:
         self.bash.expect_exact(self.PS1)
 
         return results
+    def compare_sets(self, a,b):
+        a = set(a)
+        b = set(b)
+
+        common = a.intersection(b)
+        just_a = a - b
+        just_b = b - a
+        print(f"\033[1;37mEXPECTED\033[0m {{\033[32m{','.join(common)},\033[31m{','.join(just_a)}\033[0m}} \033[1;37mGOT: \033[0m {{\033[32m{','.join(common)}, \033[31m{','.join(just_b)}\033[0m}}")
+
+    def test(self, cmd, expected, expect_failure=False):
+        if isinstance(expected, str):
+            result = self.get_comp(cmd)
+        else:
+            result = self.get_comp(cmd, cut_descriptions=True)
+
+        result = set(result) if result is not None else set()
+        expected = set(expected)
+
+        if expect_failure:
+            passed = (result != expected)
+        else:
+            passed = (result == expected)
+
+        if passed:
+            print(f"\033[32m\u2714\033[0m", end='')
+        else:
+            self.has_failed_tests = True
+            print(f"\033[31mx\033[0m", end='')
+
+        print(f" CMD: \033[33m{cmd}\033[0m", end='')
+        if passed:
+            print(f" ===> {expected}")
+        else:
+            self.compare_sets(expected, result)
+
+
+        global status
+
 
 if __name__ == "__main__":
     main()

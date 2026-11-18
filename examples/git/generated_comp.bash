@@ -3,15 +3,26 @@
 _git_arg_options=(-F)
 _git_flag_options=(-h --help --debug -d)
 _git_options=("${_git_arg_options[@]}" "${_git_flag_options[@]}")
-_git_subcommands=(remote worktree)
+_git_subcommands=(push remote worktree)
 declare -gA _git_descriptions=(
     [-h]="show this help message and exit"
     [--help]="show this help message and exit"
     [--debug]="Turn on debug logging"
     [-d]="Turn on debug logging"
     [-F]="Config file"
+    [push]="subcommand: push refs to remotes"
     [remote]="subcommand: Do remote stuff"
     [worktree]="subcommand: worktree stuff"
+)
+
+_git_push_arg_options=(--color --random)
+_git_push_flag_options=(-h --help --all)
+_git_push_options=("${_git_push_arg_options[@]}" "${_git_push_flag_options[@]}")
+declare -gA _git_push_descriptions=(
+    [-h]="show this help message and exit"
+    [--help]="show this help message and exit"
+    [--all]="flag option"
+    [--random]="Random nargs * option"
 )
 
 _git_remote_arg_options=()
@@ -71,7 +82,7 @@ declare -gA _git_worktree_delete_descriptions=(
 )
 
 _git(){
-    local cur prev words cword
+    local cur prev words cword completed_option posarg_number=0
     _init_completion || return
 
     local subcommand subcommand_index=${subcommand_index:-0}
@@ -79,7 +90,7 @@ _git(){
         case ${words[i]} in
             --debug|-d) ;;
             -F) ((i++)) ;;
-            remote|worktree) subcommand=${words[i]}; subcommand_index=$i ; break ;;
+            push|remote|worktree) subcommand=${words[i]}; subcommand_index=$i ; break ;;
         esac
     done
 
@@ -96,8 +107,24 @@ _git(){
     fi
 }
 
+_git_push(){
+    local cur prev words cword completed_option posarg_number=0
+    _init_completion || return
+
+    _git_push_get_completed_option
+    case $completed_option in
+        --color) _git_push_color_values ;;
+        --random) _git_push_random_values ;;
+        '') COMPREPLY=($(compgen -W "${_git_push_options[*]}" -- "${cur}"))
+        case ${posarg_number} in
+            0) COMPREPLY+=($(compgen -W "upstream origin" -- "${cur}")) ;;
+            1) COMPREPLY+=($(compgen -W "main dev" -- "${cur}")) ;;
+            esac ;;
+    esac
+}
+
 _git_remote(){
-    local cur prev words cword
+    local cur prev words cword completed_option posarg_number=0
     _init_completion || return
 
     local subcommand subcommand_index=${subcommand_index:-0}
@@ -118,29 +145,27 @@ _git_remote(){
 }
 
 _git_remote_add(){
-    local cur prev words cword
+    local cur prev words cword completed_option posarg_number=0
     _init_completion || return
 
     case $prev in
         --name) _git_remote_add_name_values ;;
-        *) COMPREPLY=($(compgen -W "${_git_remote_add_options[*]}" -- "${cur}")) ;;
     esac
 }
 
 _git_remote_remove(){
-    local cur prev words cword
+    local cur prev words cword completed_option posarg_number=0
     _init_completion || return
 
-    local opt=$(_git_remote_remove_get_completed_option)
-    case $opt in
+    _git_remote_remove_get_completed_option
+    case $completed_option in
         --name) _git_remote_remove_name_values ;;
         --force) _git_remote_remove_force_values ;;
-        *) COMPREPLY=($(compgen -W "${_git_remote_remove_options[*]}" -- "${cur}")) ;;
     esac
 }
 
 _git_worktree(){
-    local cur prev words cword
+    local cur prev words cword completed_option posarg_number=0
     _init_completion || return
 
     local subcommand subcommand_index=${subcommand_index:-0}
@@ -161,22 +186,20 @@ _git_worktree(){
 }
 
 _git_worktree_add(){
-    local cur prev words cword
+    local cur prev words cword completed_option posarg_number=0
     _init_completion || return
 
     case $prev in
         --name) _git_worktree_add_name_values ;;
-        *) COMPREPLY=($(compgen -W "${_git_worktree_add_options[*]}" -- "${cur}")) ;;
     esac
 }
 
 _git_worktree_delete(){
-    local cur prev words cword
+    local cur prev words cword completed_option posarg_number=0
     _init_completion || return
 
     case $prev in
         --name) _git_worktree_delete_name_values ;;
-        *) COMPREPLY=($(compgen -W "${_git_worktree_delete_options[*]}" -- "${cur}")) ;;
     esac
 }
 
@@ -219,6 +242,14 @@ _git_F_values(){
     COMPREPLY=($(compgen -W 'main-F x' -- "${cur}"))
 }
 
+_git_push_color_values(){
+    COMPREPLY=($(compgen -W 'magenta cyan yellow' -- "${cur}"))
+}
+
+_git_push_random_values(){
+    : TODO
+}
+
 _git_remote_add_name_values(){
     COMPREPLY=($(compgen -W 'remote-add--name origin upstream' -- "${cur}"))
 }
@@ -250,16 +281,57 @@ _git_worktree_delete_name_values(){
 # - Choice arguments with choices that start with '-',
 # - Using the --opt=-value
 # but these possibilities are not handled.
-_git_remote_remove_get_completed_option(){
-    case ${prev} in
-        --force) echo "${prev}" ; return ;;
-    esac
-    for((i=0;i<${#words[@]}-${subcommand_index};i++)) ; do
-        local word=${words[cword-i]}
+_git_push_get_completed_option(){
+    for((i=subcommand_index+1;i<cword;i++)) ; do
+        local nargs=0 type=''
+        local word=${words[i]}
         case ${word} in
-            --name) if ((i<=3)) ; then echo "${word}" ; return ; fi ;;
-            -*) break ;;
+            -h|--help|--all) : nargs=0 ;;
+            --random) nargs=${cword} ; type='*' ;;
+            --color) nargs=2 ;;
+            *) ((posarg_number++)) ;;
         esac
+        for((x=1;x<=nargs;x++)) ; do
+            if ((i+x >= cword)) ; then
+                completed_option=${word}
+                return
+            elif [[ ${type} == '*' ]] && [[ ${words[i+x]} == -* ]] ; then
+                break
+            fi
+        done
+        i=$((i+x-1))
+    done
+}
+
+# First check if ${prev} is an option that takes exactly one argument, then
+# starting from the end, read backwards.  If word[cword-i] is an option that
+# can take $i or more args, then that is the option we are completing.  However
+# as soon as we encounter an argument that starts with '-' that is not one
+# of these options, everything stops.  This is how argparse works also.
+#
+# It is technically possible to have aguments.
+# - Choice arguments with choices that start with '-',
+# - Using the --opt=-value
+# but these possibilities are not handled.
+_git_remote_remove_get_completed_option(){
+    for((i=subcommand_index+1;i<cword;i++)) ; do
+        local nargs=0 type=''
+        local word=${words[i]}
+        case ${word} in
+            -h|--help) : nargs=0 ;;
+            --force) nargs=1 ;;
+            --name) nargs=3 ;;
+            *) ((posarg_number++)) ;;
+        esac
+        for((x=1;x<=nargs;x++)) ; do
+            if ((i+x >= cword)) ; then
+                completed_option=${word}
+                return
+            elif [[ ${type} == '*' ]] && [[ ${words[i+x]} == -* ]] ; then
+                break
+            fi
+        done
+        i=$((i+x-1))
     done
 }
 complete -F _git git g

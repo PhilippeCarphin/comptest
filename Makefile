@@ -32,11 +32,14 @@ $(compfile): src/python/compgen/compgen.py $(compget_functions)
 #
 # Testing and demos
 #
-examples/%/generated_comp.bash: examples/%/cmd.py
+examples/%/generated_comp.bash: examples/%/cmd.py src/python/compgen/compgen.py
 	GENERATE_COMPLETION=1 python3 $< >$@
 
 test-%: examples/%/test.py examples/%/generated_comp.bash
-	python3 $<
+	python3 $^
+
+examples/%/test.py: examples/%/cmd.py src/python/compgen/compgen.py
+	COMPLETION_ANALYSIS=1 python3 $< >examples/$*/test.py
 
 analyze-%: examples/%/cmd.py
 	COMPLETION_ANALYSIS=1 python3 $<

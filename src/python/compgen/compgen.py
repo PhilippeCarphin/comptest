@@ -13,51 +13,63 @@ def completion_from_parser(parser: argparse.ArgumentParser, namespace: str, comm
 def analyze(p: argparse.ArgumentParser, test=False, indent=''):
     """ Print info on the parser.  This is mainly a demonstration of how get
     info from a given parser or tests"""
-    if False:
-        tests = []
-        base_actions = []
-        subparser_action = None
-        print(f"{indent}\033[4;37m\033[1;33m{p.prog}\033[0m")
-        for a in p._actions:
-            if isinstance(a, argparse._SubParsersAction):
-                subparser_action = a
-            else:
-                base_actions.append(a)
+    if indent == '':
+        print(textwrap.dedent("""
+            import comptest
+            import os
+            import sys
 
-        for a in base_actions:
-            print(f"  {indent}{a.option_strings}: {a.help}")
+            bash_comp = comptest.find_bash_completion()
+            try:
+                c = comptest.CompletionRunner(
+                    init_files=[bash_comp, sys.argv[1]],
+                )
+            except RuntimeError as e:
+                print(f"FAILURE: Init: {e}")
+                raise SystemExit(1) from e
+        """))
 
-        if subparser_action:
-            for ca in subparser_action._choices_actions:
-                print(f"  {indent}\033[33m{ca.dest}\033[0m: {ca.help}")
-            for subcommand, sp in subparser_action.choices.items():
-                analyze(sp, indent=indent+'    ')
-    else:
-        tests = []
-        base_actions = []
-        subparser_action = None
-        base_option_strings = []
-        subcommands = []
-        print(f"{indent}\033[4;37m\033[1;33m{p.prog}\033[0m", file=sys.stderr)
-        for a in p._actions:
-            if isinstance(a, argparse._SubParsersAction):
-                subparser_action = a
-                subcommands = a.choices.keys()
-            else:
-                base_actions.append(a)
-                base_option_strings.extend(a.option_strings)
-        print(f"test('{p.prog} ', {[*subcommands, *base_option_strings]})")
+    tests = []
+    base_actions = []
+    subparser_action = None
+    posarg_actions = []
+    base_option_strings = []
+    subcommands = []
+    print(f"{indent}\033[4;37m\033[1;33m{p.prog}\033[0m", file=sys.stderr)
+    for a in p._actions:
+        if isinstance(a, argparse._SubParsersAction):
+            subparser_action = a
+            subcommands = a.choices.keys()
+        elif a.option_strings:
+            base_actions.append(a)
+            base_option_strings.extend(a.option_strings)
+        else:
+            posarg_actions.append(a)
 
-        for a in base_actions:
-            print(f"  {indent}{a.option_strings}: {a.help}", file=sys.stderr)
+    if posarg_actions:
+        extra_arg = ''
+        for i,a in enumerate(posarg_actions):
+            print(f"  {indent}\033[36m{a.dest}\033[0m (posarg {i}): {a.help}", file=sys.stderr)
             if a.choices:
-                for o in a.option_strings:
-                    print(f"test('{p.prog} {o} ', {a.choices})")
-        if subparser_action:
-            for ca in subparser_action._choices_actions:
-                print(f"  {indent}\033[33m{ca.dest}\033[0m: {ca.help}",file=sys.stderr)
-            for subcommand, sp in subparser_action.choices.items():
-                analyze(sp, test=True, indent=indent+'    ')
+                print(f"c.test('{p.prog}{extra_arg} ', {[*base_option_strings, *a.choices]})")
+            extra_arg += f' posart_{i}_value'
+    else:
+        print(f"c.test('{p.prog} ', {[*subcommands, *base_option_strings]})")
+
+    for a in base_actions:
+        print(f"  {indent}{a.option_strings}: {a.help}", file=sys.stderr)
+        if a.choices:
+            for o in a.option_strings:
+                print(f"c.test('{p.prog} {o} ', {a.choices})")
+
+    if subparser_action:
+        for ca in subparser_action._choices_actions:
+            print(f"  {indent}\033[33m{ca.dest}\033[0m (subcommand): {ca.help}",file=sys.stderr)
+        for subcommand, sp in subparser_action.choices.items():
+            analyze(sp, test=True, indent=indent+'    ')
+
+    if indent == '':
+        print("\nsys.exit(1 if c.has_failed_tests else 0)")
 
 # TODO: Never decided to handle positional arguments
 
@@ -120,9 +132,6 @@ class CompletionGenerator():
         self.print_arrays()
         print()
         self.print_main_function()
-        # if self.subparser_action:
-        #     for subgen in self.subgenerators:
-        #         subgen.print_main_function()
         if self.with_descriptions:
             self.print_description_adder()
         if self.with_functions:
@@ -149,7 +158,7 @@ class CompletionGenerator():
     def print_main_function(self):
         print(f"_{self.namespace}(){{", end='')
         print(textwrap.indent(textwrap.dedent(f"""
-            local cur prev words cword
+            local cur prev words cword completed_option posarg_number=0
             _init_completion || return"""), '    '))
 
         sc_indent = '    '
@@ -161,7 +170,7 @@ class CompletionGenerator():
 
         self.option_case_statement(indent=sc_indent)
         if self.with_descriptions and not self.parent:
-            print(f"\n{sc_indent}_{self.namespace}_add_descriptions_by_ref _{self.namespace}_descriptions")
+            print(f"\n{sc_indent}{self.description_adder} _{self.namespace}_descriptions")
 
         if self.subparser_action:
             print("    else")
@@ -193,8 +202,8 @@ class CompletionGenerator():
 
     def option_case_statement(self, indent=''):
         if self.advanced:
-            print(f"\n{indent}local opt=$(_{self.namespace}_get_completed_option)")
-            print(f"{indent}case $opt in")
+            print(f"\n{indent}_{self.namespace}_get_completed_option")
+            print(f"{indent}case $completed_option in")
         else:
             print(f"\n{indent}case $prev in")
 
@@ -217,9 +226,16 @@ class CompletionGenerator():
         if self.subparser_action:
             print(f"    {indent}*) COMPREPLY=($(compgen -W \"${{_{self.namespace}_subcommands[*]}} ${{_{self.namespace}_options[*]}}\" -- \"${{cur}}\")) ;;")
         else:
-            print(f"    {indent}*) COMPREPLY=($(compgen -W \"${{_{self.namespace}_options[*]}}\" -- \"${{cur}}\")) ;;")
+            if self.posarg_actions:
+
+                print(f"    {indent}'') COMPREPLY=($(compgen -W \"${{_{self.namespace}_options[*]}}\" -- \"${{cur}}\"))")
+                print(f"    {indent}case ${{posarg_number}} in")
+                for i,a in enumerate(self.posarg_actions):
+                    print(f"        {indent}{i}) COMPREPLY+=($(compgen -W \"{' '.join(a.choices)}\" -- \"${{cur}}\")) ;;")
+                print(f"    {indent}    esac ;;")
 
         print(f"{indent}esac")
+
 
     def print_value_function_stubs(self):
         for opt in self.arg_actions:
@@ -327,37 +343,49 @@ class CompletionGenerator():
             opts_with_more_args = []
             opts_with_fixed_nargs = []
             opts_with_single_arg = []
+            opts_with_zero_args = []
+            actions_with_fixed_nargs = []
             for a in self.parser._actions:
                 if a.nargs is None and a.option_strings:
                     # a.nargs is None for options that take exactly one argument and for subcommands
                     # which we want to leave out
-                    opts_with_single_arg.append(a)
+                    opts_with_single_arg.extend(a.option_strings)
                 elif a.nargs in ['*', '+']:
-                    opts_with_more_args.append(a)
+                    opts_with_more_args.extend(a.option_strings)
                 elif isinstance(a.nargs, int) and a.nargs > 0:
-                    opts_with_fixed_nargs.append(a)
+                    actions_with_fixed_nargs.append(a)
+                    opts_with_fixed_nargs.extend(a.option_strings)
                 elif a.nargs == 0:
+                    opts_with_zero_args.extend(a.option_strings)
                     pass # nothing to do, flag options don't have args
+
             print(f"_{self.namespace}_get_completed_option(){{")
+            print(f"    for((i=subcommand_index+1;i<cword;i++)) ; do")
+            print(f"        local nargs=0 type=''")
+            print(f"        local word=${{words[i]}}")
+            print(f"        case ${{word}} in")
+            if opts_with_zero_args:
+                print(f"            {'|'.join(opts_with_zero_args)}) : nargs=0 ;;")
             if opts_with_single_arg:
-                print(f"    case ${{prev}} in")
-                for a in opts_with_single_arg:
-                    print(f"        {'|'.join(reversed(a.option_strings))}) echo \"${{prev}}\" ; return ;;")
-                print("    esac")
-            if opts_with_more_args or opts_with_fixed_nargs:
-                limit="${#words[@]}-${subcommand_index}" if self.parent else "${#words[@]}"
-                print(f"    for((i=0;i<{limit};i++)) ; do")
-                print("        local word=${words[cword-i]}")
-                print("        case ${word} in")
-                # for a in opts_with_more_args:
-                if opts_with_more_args:
-                    opts = [s for a in opts_with_more_args for s in a.option_strings]
-                    print(f"            {'|'.join(opts)}) echo \"${{word}}\" ; return ;;")
-                for a in opts_with_fixed_nargs:
-                    print(f"            {'|'.join(a.option_strings)}) if ((i<={a.nargs})) ; then echo \"${{word}}\" ; return ; fi ;;")
-                print(f"            -*) break ;;")
-                print(f"        esac")
-                print(f"    done")
+                print(f"            {'|'.join(opts_with_single_arg)}) nargs=1 ;;")
+            if opts_with_more_args:
+                print(f"            {'|'.join(opts_with_more_args)}) nargs=${{cword}} ; type='*' ;;")
+            for a in actions_with_fixed_nargs:
+                print(f"            {'|'.join(a.option_strings)}) nargs={a.nargs} ;;")
+            print(f"            *) ((posarg_number++)) ;;")
+            print(f"        esac")
+
+            print(f"        for((x=1;x<=nargs;x++)) ; do")
+            print(f"            if ((i+x >= cword)) ; then")
+            print(f"                completed_option=${{word}}")
+            print(f"                return")
+            print(f"            elif [[ ${{type}} == '*' ]] && [[ ${{words[i+x]}} == -* ]] ; then")
+            print(f"                break")
+            print(f"            fi")
+            print(f"        done")
+            print(f"        i=$((i+x-1))")
+            print("    done")
+
             print("}")
 
         for subgen in self.subgenerators:

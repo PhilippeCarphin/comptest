@@ -12,6 +12,13 @@ def get_args():
     p.add_argument("-F", choices=['main-F', 'x'], help="Config file")
     sp = p.add_subparsers()
 
+    push = sp.add_parser("push", help="push refs to remotes")
+    push.add_argument("remote", choices=['upstream', 'origin'])
+    push.add_argument("ref", choices=['main', 'dev'])
+    push.add_argument("--color", nargs=2, choices=['magenta', 'cyan', 'yellow'])
+    push.add_argument("--all", action='store_true', help="flag option")
+    push.add_argument("--random", nargs="*", help='Random nargs * option')
+
     remote = sp.add_parser("remote", help="Do remote stuff")
     remote_sp = remote.add_subparsers()
 
