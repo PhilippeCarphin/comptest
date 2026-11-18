@@ -223,7 +223,7 @@ class CompletionGenerator():
                 else:
                     print(f" : TODO ;;")
 
-        if self.subparser_action:
+        if self.subparser_action or not self.posarg_actions:
             print(f"    {indent}*) COMPREPLY=($(compgen -W \"${{_{self.namespace}_subcommands[*]}} ${{_{self.namespace}_options[*]}}\" -- \"${{cur}}\")) ;;")
         else:
             if self.posarg_actions:

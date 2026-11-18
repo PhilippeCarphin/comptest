@@ -150,6 +150,7 @@ _git_remote_add(){
 
     case $prev in
         --name) _git_remote_add_name_values ;;
+        *) COMPREPLY=($(compgen -W "${_git_remote_add_subcommands[*]} ${_git_remote_add_options[*]}" -- "${cur}")) ;;
     esac
 }
 
@@ -161,6 +162,7 @@ _git_remote_remove(){
     case $completed_option in
         --name) _git_remote_remove_name_values ;;
         --force) _git_remote_remove_force_values ;;
+        *) COMPREPLY=($(compgen -W "${_git_remote_remove_subcommands[*]} ${_git_remote_remove_options[*]}" -- "${cur}")) ;;
     esac
 }
 
@@ -191,6 +193,7 @@ _git_worktree_add(){
 
     case $prev in
         --name) _git_worktree_add_name_values ;;
+        *) COMPREPLY=($(compgen -W "${_git_worktree_add_subcommands[*]} ${_git_worktree_add_options[*]}" -- "${cur}")) ;;
     esac
 }
 
@@ -200,6 +203,7 @@ _git_worktree_delete(){
 
     case $prev in
         --name) _git_worktree_delete_name_values ;;
+        *) COMPREPLY=($(compgen -W "${_git_worktree_delete_subcommands[*]} ${_git_worktree_delete_options[*]}" -- "${cur}")) ;;
     esac
 }
 
