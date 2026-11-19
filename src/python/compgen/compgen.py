@@ -236,9 +236,9 @@ class CompletionGenerator():
             if self.posarg_actions:
 
                 print(f"    {indent}'') COMPREPLY=($(compgen -W \"${{_{self.namespace}_options[*]}}\" -- \"${{cur}}\"))")
-                print(f"    {indent}case ${{posarg_number}} in")
+                print(f"        {indent}case ${{posarg_number}} in")
                 for i,a in enumerate(self.posarg_actions):
-                    print(f"        {indent}{i}) COMPREPLY+=($(compgen -W \"{' '.join(a.choices)}\" -- \"${{cur}}\")) ;;")
+                    print(f"            {indent}{i}) COMPREPLY+=($(compgen -W \"{' '.join(a.choices)}\" -- \"${{cur}}\")) ;;")
                 print(f"    {indent}    esac ;;")
 
         print(f"{indent}esac")
