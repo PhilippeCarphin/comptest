@@ -4,7 +4,7 @@ compget_functions=share/bash-completion/completions/compget_functions.bash
 compfile=share/bash-completion/completions/compget
 pythonpath = PYTHONPATH=$(PWD)/src/python
 
-all: new
+all: compfile
 
 install-dev: compfile
 	python3 -m pip install -e .
