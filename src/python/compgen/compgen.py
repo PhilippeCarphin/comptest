@@ -10,22 +10,24 @@ def completion_from_parser(parser: argparse.ArgumentParser, namespace: str, comm
         raise TypeError("Argument commands must be a sequence, not 'str'")
     CompletionGenerator(parser=parser, namespace=namespace, commands=commands, with_functions=with_functions, with_descriptions=with_descriptions).generate()
 
-def analyze(p: argparse.ArgumentParser, test=False, indent=''):
+def analyze(p: argparse.ArgumentParser, indent=''):
     """ Print info on the parser.  This is mainly a demonstration of how get
     info from a given parser or tests"""
     if indent == '':
         print(textwrap.dedent("""
             import comptest
-            import os
             import sys
 
             bash_comp = comptest.find_bash_completion()
             try:
                 c = comptest.CompletionRunner(
                     init_files=[bash_comp, sys.argv[1]],
+                    PS4='+ \033[35m${BASH_SOURCE[0]##*/}\033[36m:\033[1;37m${FUNCNAME:-}\033[22;36m:\033[32m${LINENO:-x}\033[36m:\033[0m ',
+                    xtrace_log="xtrace.log",
+                    logfile="pty.log"
                 )
             except RuntimeError as e:
-                print(f"FAILURE: Init: {e}")
+                print(f"FAILURE: Init: '{e}'")
                 raise SystemExit(1) from e
         """))
 
