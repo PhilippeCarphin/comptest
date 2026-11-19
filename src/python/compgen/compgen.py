@@ -192,11 +192,15 @@ class CompletionGenerator():
             for((i=subcommand_index+1;i<${#words[@]};i++)) ; do
                 case ${words[i]} in"""), '    '))
 
-        for a in self.parser._actions:
-            if isinstance(a, argparse._StoreTrueAction):
-                print(f"            {'|'.join(a.option_strings)}) ;;")
-            elif isinstance(a, argparse._StoreAction):
+        if self.advanced:
+            for a in self.options_with_one_arg:
                 print(f"            {'|'.join(a.option_strings)}) ((i++)) ;;")
+            for a in self.options_with_fixed_nargs:
+                print(f"            {'|'.join(a.option_strings)}) i=$((i+{a.nargs})) ;;")
+            if self.options_with_more_args:
+                print(f"            {'|'.join(['|'.join(a.option_strings) for a in self.options_with_more_args])})")
+                print(f"                while [[ ${{words[i+1]}} != -* ]] ; do ((i++)) ; done ;;")
+
 
         print(f"            {'|'.join(self.subparser_action.choices.keys())}) subcommand=${{words[i]}}; subcommand_index=$i ; break ;;")
         print(f"        esac")
