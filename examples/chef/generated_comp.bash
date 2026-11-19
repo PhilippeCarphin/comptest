@@ -47,8 +47,7 @@ _chef(){
     local subcommand subcommand_index=${subcommand_index:-0}
     for((i=subcommand_index+1;i<${#words[@]};i++)) ; do
         case ${words[i]} in
-            --debug|-d) ;;
-            -F) ((i++)) ;;
+            -F) i=$((i+2)) ;;
             cook|prep) subcommand=${words[i]}; subcommand_index=$i ; break ;;
         esac
     done
@@ -68,8 +67,7 @@ _chef(){
 }
 
 _chef_cook(){
-    local cur prev words cword completed_option posarg_number=0
-    _init_completion || return
+    local completed_option posarg_number=0
 
     case $prev in
         -v|--vessel) COMPREPLY+=($(compgen -W "pan pot" -- "${cur}")) ;;
@@ -80,8 +78,7 @@ _chef_cook(){
 }
 
 _chef_prep(){
-    local cur prev words cword completed_option posarg_number=0
-    _init_completion || return
+    local completed_option posarg_number=0
 
     _chef_prep_get_completed_option
     case $completed_option in

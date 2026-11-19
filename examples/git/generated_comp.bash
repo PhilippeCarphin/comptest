@@ -88,8 +88,6 @@ _git(){
     local subcommand subcommand_index=${subcommand_index:-0}
     for((i=subcommand_index+1;i<${#words[@]};i++)) ; do
         case ${words[i]} in
-            --debug|-d) ;;
-            -F) ((i++)) ;;
             push|remote|worktree) subcommand=${words[i]}; subcommand_index=$i ; break ;;
         esac
     done
@@ -108,24 +106,22 @@ _git(){
 }
 
 _git_push(){
-    local cur prev words cword completed_option posarg_number=0
-    _init_completion || return
+    local completed_option posarg_number=0
 
     _git_push_get_completed_option
     case $completed_option in
         --color) _git_push_color_values ;;
         --random) _git_push_random_values ;;
         '') COMPREPLY=($(compgen -W "${_git_push_options[*]}" -- "${cur}"))
-        case ${posarg_number} in
-            0) COMPREPLY+=($(compgen -W "upstream origin" -- "${cur}")) ;;
-            1) COMPREPLY+=($(compgen -W "main dev" -- "${cur}")) ;;
+            case ${posarg_number} in
+                0) COMPREPLY+=($(compgen -W "upstream origin" -- "${cur}")) ;;
+                1) COMPREPLY+=($(compgen -W "main dev" -- "${cur}")) ;;
             esac ;;
     esac
 }
 
 _git_remote(){
-    local cur prev words cword completed_option posarg_number=0
-    _init_completion || return
+    local completed_option posarg_number=0
 
     local subcommand subcommand_index=${subcommand_index:-0}
     for((i=subcommand_index+1;i<${#words[@]};i++)) ; do
@@ -145,8 +141,7 @@ _git_remote(){
 }
 
 _git_remote_add(){
-    local cur prev words cword completed_option posarg_number=0
-    _init_completion || return
+    local completed_option posarg_number=0
 
     case $prev in
         --name) _git_remote_add_name_values ;;
@@ -155,8 +150,7 @@ _git_remote_add(){
 }
 
 _git_remote_remove(){
-    local cur prev words cword completed_option posarg_number=0
-    _init_completion || return
+    local completed_option posarg_number=0
 
     _git_remote_remove_get_completed_option
     case $completed_option in
@@ -167,8 +161,7 @@ _git_remote_remove(){
 }
 
 _git_worktree(){
-    local cur prev words cword completed_option posarg_number=0
-    _init_completion || return
+    local completed_option posarg_number=0
 
     local subcommand subcommand_index=${subcommand_index:-0}
     for((i=subcommand_index+1;i<${#words[@]};i++)) ; do
@@ -188,8 +181,7 @@ _git_worktree(){
 }
 
 _git_worktree_add(){
-    local cur prev words cword completed_option posarg_number=0
-    _init_completion || return
+    local completed_option posarg_number=0
 
     case $prev in
         --name) _git_worktree_add_name_values ;;
@@ -198,8 +190,7 @@ _git_worktree_add(){
 }
 
 _git_worktree_delete(){
-    local cur prev words cword completed_option posarg_number=0
-    _init_completion || return
+    local completed_option posarg_number=0
 
     case $prev in
         --name) _git_worktree_delete_name_values ;;
