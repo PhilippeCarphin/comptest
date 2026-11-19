@@ -22,7 +22,7 @@ def analyze(p: argparse.ArgumentParser, indent=''):
             try:
                 c = comptest.CompletionRunner(
                     init_files=[bash_comp, sys.argv[1]],
-                    PS4='+ \033[35m${BASH_SOURCE[0]##*/}\033[36m:\033[1;37m${FUNCNAME:-}\033[22;36m:\033[32m${LINENO:-x}\033[36m:\033[0m ',
+                    PS4='+ \\033[35m${BASH_SOURCE[0]##*/}\\033[36m:\\033[1;37m${FUNCNAME:-}\\033[22;36m:\\033[32m${LINENO:-x}\\033[36m:\\033[0m ',
                     xtrace_log="xtrace.log",
                     logfile="pty.log"
                 )
