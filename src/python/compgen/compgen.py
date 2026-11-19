@@ -157,9 +157,12 @@ class CompletionGenerator():
 
     def print_main_function(self):
         print(f"_{self.namespace}(){{", end='')
-        print(textwrap.indent(textwrap.dedent(f"""
-            local cur prev words cword completed_option posarg_number=0
-            _init_completion || return"""), '    '))
+        if self.parent is None:
+            print(textwrap.indent(textwrap.dedent(f"""
+                local cur prev words cword completed_option posarg_number=0
+                _init_completion || return"""), '    '))
+        else:
+            print(f"\n    local completed_option posarg_number=0")
 
         sc_indent = '    '
         if self.subparser_action is not None:
