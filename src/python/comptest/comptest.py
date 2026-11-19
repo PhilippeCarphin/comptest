@@ -233,7 +233,7 @@ class CompletionRunner:
 
         print(f" CMD: \033[33m{cmd}\033[0m", end='')
         if passed:
-            print(f" ===> {expected}")
+            print(f" ===> {result}")
         else:
             self.compare_sets(expected, result)
 

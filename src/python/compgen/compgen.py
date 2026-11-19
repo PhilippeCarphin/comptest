@@ -59,14 +59,34 @@ def analyze(p: argparse.ArgumentParser, test=False, indent=''):
     for a in base_actions:
         print(f"  {indent}{a.option_strings}: {a.help}", file=sys.stderr)
         if a.choices:
+            if isinstance(a.nargs, int):
+                nargs=a.nargs
+                minargs=a.nargs
+            elif a.nargs == '*':
+                nargs=3
+                minargs=0
+            elif a.nargs == '+':
+                nargs=3
+                minargs=1
+            elif a.nargs is None:
+                nargs=1
+                minargs=1
             for o in a.option_strings:
-                print(f"c.test('{p.prog} {o} ', {a.choices})")
+                for i in range(nargs):
+                    other_args = '_ ' * i
+                    print(f"c.test('{p.prog} {o} {other_args}', {a.choices})")
+                if minargs == nargs:
+                    other_args = '_ ' * nargs
+                    print(f"c.test('{p.prog} {o} {other_args}', {a.choices}, expect_failure=True)")
+                else:
+                    other_args = '_ ' * nargs + '-- '
+                    print(f"c.test('{p.prog} {o} {other_args}', {a.choices}, expect_failure=True)")
 
     if subparser_action:
         for ca in subparser_action._choices_actions:
             print(f"  {indent}\033[33m{ca.dest}\033[0m (subcommand): {ca.help}",file=sys.stderr)
         for subcommand, sp in subparser_action.choices.items():
-            analyze(sp, test=True, indent=indent+'    ')
+            analyze(sp, indent=indent+'    ')
 
     if indent == '':
         print("\nsys.exit(1 if c.has_failed_tests else 0)")
